@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Field Shift
 
-## Getting Started
+Planejamento de rotação de culturas com dados da NASA, com dois lados:
 
-First, run the development server:
+- **Técnico** (agrônomo, técnico agrícola, extensionista): cadastra propriedades, desenha talhões no mapa, registra visitas, envia o laudo de solo por foto, compara rotações e publica o plano.
+- **Produtor**: vê o plano em linguagem simples, marca as tarefas feitas, recebe alertas de clima e relata problemas com foto e GPS.
+
+NASA Space Apps Challenge 2026 · desafio *Field Shift: Adapting Farms with NASA Data*. Contexto do agro brasileiro em [`docs/fluxo-agro.md`](docs/fluxo-agro.md).
+
+## Dados usados
+
+| Fonte | Para quê | Acesso |
+|---|---|---|
+| NASA POWER (diário, 2005–2024 + últimos 50 dias) | Chuva, temperatura, umidade do ar, geada, calor, estiagem, alertas | API pública, sem chave |
+| SRTM (NASA) via AWS Terrain Tiles | Altitude e declividade por talhão, classes de relevo da Embrapa | Público, sem chave |
+| NASA GIBS: MODIS NDVI 8 dias, SMAP L4, HLS 30 m | Camadas visuais no mapa | Público, sem chave |
+| Imagem Esri World Imagery | Desenhar os talhões (a NASA não tem imagem fina o bastante) | Público, com atribuição |
+| Claude (Anthropic), modelo `claude-opus-5-5` | Ler o laudo por foto/PDF; escrever o texto do plano para o produtor | `ANTHROPIC_API_KEY` |
+
+As chamadas ao Claude usam `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`): se o modelo recusar um pedido, a API tenta outro modelo automaticamente.
+
+## Rodar localmente
 
 ```bash
+npm install
+# preencha .env.local (veja o arquivo)
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Banco (Supabase)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Esquema em `supabase/migrations/`. Tabelas: `perfis`, `propriedades`, `talhoes`, `visitas`, `amostras`, `dados_nasa`, `planos`, `tarefas`, `ocorrencias`, mais o bucket privado `arquivos`. Todas com RLS: o técnico vê o que cadastrou; o produtor vê as propriedades cadastradas com o e-mail dele e só os planos publicados.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Estrutura
 
-## Learn More
+- `src/lib/nasa/` — NASA POWER e relevo SRTM
+- `src/lib/agro/` — culturas, riscos, comparação de rotações, interpretação do laudo, modelo de 4 quadrantes
+- `src/app/tecnico/` — telas do técnico
+- `src/app/produtor/` — telas do produtor (pensadas para celular)
+- `src/app/api/laudo`, `src/app/api/resumo` — chamadas ao Claude
 
-To learn more about Next.js, take a look at the following resources:
+## Limitações conhecidas (antes de usar com produtores reais)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Base de culturas e regras de pontuação simplificadas: precisam de validação agronômica por região.
+- Faixas do laudo: Boletim 100 (IAC). RS/SC usam o Manual CQFS-RS/SC (P e K dependem da argila); ainda não implementado.
+- Modelo de 4 quadrantes com referência de pomares de pêssego (Melo, 2026); fórmula da AEEM a conferir com o autor.
+- ZARC, importação do polígono do CAR e séries de NDVI/SMAP por talhão (AppEEARS) ficam para a próxima fase.

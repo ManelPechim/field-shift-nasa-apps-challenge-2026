@@ -1,26 +1,141 @@
 @import "tailwindcss";
 
+/* Paleta: verde de lavoura como marca, azul "satélite" para dados da NASA, marrom de solo.
+   Cores semânticas (bom / atenção / ruim) ficam separadas da marca. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #eef1ec;
+  --surface: #ffffff;
+  --surface-2: #f5f7f3;
+  --ink: #17201a;
+  --muted: #5b675e;
+  --line: #d5dcd3;
+  --brand: #2f6b3a;
+  --brand-ink: #ffffff;
+  --brand-soft: #e2efe3;
+  --sat: #1d5fa6;
+  --sat-soft: #e3ecf7;
+  --soil: #8a5a36;
+  --grain: #d4a237;
+  --cover: #4f9a55;
+  --forage: #8db04a;
+  --rain: #4b8fd6;
+  --temp: #b4502a;
+  --frost: #3f86ad;
+  --ok: #2f7d4a;
+  --ok-soft: #e1f1e6;
+  --warn: #96600f;
+  --warn-soft: #fbefd9;
+  --bad: #b23b2c;
+  --bad-soft: #f8e1dd;
+  color-scheme: light;
 }
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg: #0f1411;
+    --surface: #171e19;
+    --surface-2: #1d251f;
+    --ink: #e5ebe4;
+    --muted: #9aa79c;
+    --line: #2b362e;
+    --brand: #6cb873;
+    --brand-ink: #0b160d;
+    --brand-soft: #1b2d1e;
+    --sat: #7fb0ec;
+    --sat-soft: #182638;
+    --soil: #c99567;
+    --grain: #d9ae4f;
+    --cover: #6cb873;
+    --forage: #a3c463;
+    --rain: #6aa6e6;
+    --temp: #e58a62;
+    --frost: #8cc3de;
+    --ok: #6cc28a;
+    --ok-soft: #18301f;
+    --warn: #e0a24a;
+    --warn-soft: #33260f;
+    --bad: #ec7a6a;
+    --bad-soft: #3a1c18;
+    color-scheme: dark;
   }
 }
 
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-sat: var(--sat);
+  --color-sat-soft: var(--sat-soft);
+  --color-soil: var(--soil);
+  --color-grain: var(--grain);
+  --color-cover: var(--cover);
+  --color-forage: var(--forage);
+  --color-rain: var(--rain);
+  --color-temp: var(--temp);
+  --color-frost: var(--frost);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --font-sans: var(--font-corpo), "Segoe UI", system-ui, sans-serif;
+  --font-display: var(--font-titulo), "Arial Narrow", system-ui, sans-serif;
+  --font-mono: var(--font-dados), ui-monospace, Consolas, monospace;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-brand bg-brand px-4 py-2 font-semibold text-brand-ink transition hover:brightness-110 disabled:cursor-progress disabled:opacity-60;
+  }
+  .btn-ghost {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-brand bg-transparent px-4 py-2 font-semibold text-brand transition hover:bg-brand-soft;
+  }
+  .btn-sm {
+    @apply min-h-9 px-3 py-1 text-sm;
+  }
+  .card {
+    @apply rounded-2xl border border-line bg-surface;
+  }
+  .input {
+    @apply min-h-11 w-full rounded-lg border border-line bg-surface px-3 py-2 text-ink;
+  }
+  .label {
+    @apply mb-1 block text-sm font-semibold;
+  }
+  .eyebrow {
+    @apply font-mono text-[0.7rem] uppercase tracking-[0.09em] text-muted;
+  }
+  .h1 {
+    @apply font-display text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl;
+  }
+  .h2 {
+    @apply font-display text-lg font-bold;
+  }
+  .fonte {
+    @apply font-mono text-[0.68rem] text-muted;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--sat);
+  outline-offset: 2px;
+}
+
+/* MapLibre / Mapbox Draw */
+.maplibregl-ctrl-group button.mapbox-gl-draw_ctrl-draw-btn,
+.maplibregl-ctrl-group button.mapbox-gl-draw_polygon,
+.maplibregl-ctrl-group button.mapbox-gl-draw_trash {
+  background-repeat: no-repeat;
+  background-position: center;
 }

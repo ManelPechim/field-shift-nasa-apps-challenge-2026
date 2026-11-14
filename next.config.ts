@@ -1,9 +1,7 @@
 import type { NextConfig } from "next";
 
+// Sem cacheComponents: todas as telas dependem do usuário logado e são dinâmicas.
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
   turbopack: {
     rules: {
       "*.css": {
@@ -11,6 +9,9 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+  },
+  experimental: {
+    serverActions: { bodySizeLimit: "12mb" },
   },
 };
 

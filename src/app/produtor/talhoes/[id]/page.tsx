@@ -1,0 +1,90 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { CalendarioRotacao } from "@/components/graficos";
+import { TarefaProdutor } from "@/components/tarefa";
+import { Pagina, Selo, Vazio, dataBR, num } from "@/components/ui";
+import { exigirPerfil } from "@/lib/supabase/server";
+import { regiaoDe, rotacaoPorId } from "@/lib/agro/culturas";
+import { ocupacao } from "@/lib/agro/rotacao";
+import { QUADRANTES, aeem, cotDaMO, diagnostico4QM, interpretar } from "@/lib/agro/solo";
+import type { Amostra, Ocorrencia, Plano, Talhao, Tarefa } from "@/lib/tipos";
+
+export default async function TalhaoProdutor(props: PageProps<"/produtor/talhoes/[id]">) {
+  const { id } = await props.params;
+  const { relato } = await props.searchParams;
+  const { supabase } = await exigirPerfil("produtor");
+  const { data: t } = await supabase.from("talhoes").select("*").eq("id", id).maybeSingle<Talhao>();
+  if (!t) notFound();
+  const [{ data: planos }, { data: tarefas }, { data: amostras }, { data: ocorrencias }] = await Promise.all([
+    supabase.from("planos").select("*").eq("talhao_id", id).eq("status", "publicado").order("publicado_em", { ascending: false }).limit(1).returns<Plano[]>(),
+    supabase.from("tarefas").select("*").eq("talhao_id", id).order("criado_em").returns<Tarefa[]>(),
+    supabase.from("amostras").select("*").eq("talhao_id", id).order("criado_em", { ascending: false }).limit(1).returns<Amostra[]>(),
+    supabase.from("ocorrencias").select("*").eq("talhao_id", id).order("criado_em", { ascending: false }).limit(10).returns<Ocorrencia[]>(),
+  ]);
+  const plano = planos?.[0];
+  const rot = plano ? rotacaoPorId(plano.rotacao_id) : null;
+  const a = amostras?.[0];
+  const I = a ? interpretar(a.valores) : null;
+  const cot = a ? a.enzimas?.cot ?? (a.valores.mo != null ? cotDaMO(a.valores.mo) : null) : null;
+  const d4 = a && cot != null ? diagnostico4QM(cot, a.enzimas ? aeem(a.enzimas, cot) : null) : null;
+  const precisa = I?.indicadores.filter((i) => i.tom === "ruim" || i.tom === "atencao") ?? [];
+
+  return (
+    <Pagina>
+      <Link href="/produtor" className="text-sm">← Início</Link>
+      <div className="mt-2 mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div><span className="eyebrow">{num(t.area_ha, 1)} ha</span><h1 className="h1">{t.nome}</h1></div>
+        <Link href={`/produtor/relatar?talhao=${t.id}`} className="btn">Relatar algo deste talhão</Link>
+      </div>
+      {relato === "ok" && <p role="status" className="mb-6 rounded-xl bg-ok-soft p-3 text-ok">Relato enviado. Seu técnico vai ver e responder aqui.</p>}
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        <section className="grid content-start gap-3">
+          <h2 className="h2">Plano da safra</h2>
+          {plano ? (
+            <div className="card grid gap-3 p-4">
+              <div><span className="eyebrow">Safra {plano.safra}</span><b className="block font-display text-lg">{plano.rotacao_nome}</b></div>
+              {plano.resumo_produtor && <p className="whitespace-pre-line">{plano.resumo_produtor}</p>}
+              {rot && <CalendarioRotacao ocupacao={ocupacao(rot, regiaoDe(t.centroide_lat!))} />}
+            </div>
+          ) : <Vazio titulo="O plano ainda não foi publicado">Seu técnico está preparando. Quando publicar, aparece aqui.</Vazio>}
+
+          <h2 className="h2 mt-4">Tarefas</h2>
+          {tarefas?.length ? <ul className="grid gap-3">{tarefas.map((x) => <TarefaProdutor key={x.id} t={x} />)}</ul> : <p className="text-sm text-muted">Nenhuma tarefa ainda.</p>}
+        </section>
+
+        <section className="grid content-start gap-3">
+          <h2 className="h2">Seu solo</h2>
+          {a && I ? (
+            <div className="card grid gap-3 p-4">
+              <p className="text-sm text-muted">Análise de {dataBR(a.data_coleta ?? a.criado_em)}</p>
+              {d4?.quadrante ? (
+                <div><Selo tom={QUADRANTES[d4.quadrante].tom}>Saúde do solo: {QUADRANTES[d4.quadrante].nome}</Selo><p className="mt-1">{QUADRANTES[d4.quadrante].descricao}</p></div>
+              ) : <p className="text-sm">A saúde biológica do solo ainda não foi medida. Pergunte ao técnico sobre a análise de enzimas (BioAS).</p>}
+              {precisa.length ? (
+                <div>
+                  <b>O que precisa de cuidado</b>
+                  <ul className="mt-1 grid gap-1 text-sm">{precisa.map((i) => <li key={i.nome}><Selo tom={i.tom}>{i.classe}</Selo> {i.nome.replace(/ \(.+\)/, "")}: {i.explicacao}</li>)}</ul>
+                </div>
+              ) : <p>Os nutrientes estão em bom nível.</p>}
+              <p className="text-xs text-muted">Dose de calcário e de adubo: combine com o técnico.</p>
+            </div>
+          ) : <Vazio titulo="Ainda sem análise de solo">Quando o técnico registrar o laudo, o resumo aparece aqui.</Vazio>}
+
+          <h2 className="h2 mt-4">Seus relatos</h2>
+          {ocorrencias?.length ? (
+            <ul className="grid gap-2">
+              {ocorrencias.map((o) => (
+                <li key={o.id} className="card p-3">
+                  <div className="flex flex-wrap items-center gap-2"><b>{o.tipo}</b><span className="text-sm text-muted">{dataBR(o.criado_em)}</span><Selo tom={o.status === "resolvida" ? "bom" : o.status === "vista" ? "info" : "neutro"}>{o.status === "nova" ? "Enviado" : o.status === "vista" ? "Visto pelo técnico" : "Resolvido"}</Selo></div>
+                  {o.descricao && <p className="text-sm">{o.descricao}</p>}
+                  {o.resposta_tecnico && <p className="mt-1 rounded-md bg-sat-soft px-2 py-1 text-sm"><b>Técnico:</b> {o.resposta_tecnico}</p>}
+                </li>
+              ))}
+            </ul>
+          ) : <p className="text-sm text-muted">Nada relatado ainda.</p>}
+        </section>
+      </div>
+    </Pagina>
+  );
+}
