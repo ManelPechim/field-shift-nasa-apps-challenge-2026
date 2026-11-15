@@ -11,19 +11,23 @@ import { exigirPerfil } from "@/lib/supabase/server";
 import { dadosNasa } from "@/lib/dados";
 import { alertasDoClima } from "@/lib/alertas";
 import { pinosDosRelatos } from "@/lib/pinos";
+import { formatarCelular, linkWhatsApp } from "@/lib/contato";
+import { tecnicoDoProdutor } from "@/lib/tecnico-do-produtor";
 import type { Ocorrencia, Plano, Propriedade, Talhao, Tarefa, Visita } from "@/lib/tipos";
 import { TalhoesEMapa } from "./talhoes-e-mapa";
 
 export default async function PropriedadeProdutor(props: PageProps<"/produtor/propriedades/[id]">) {
   const { id } = await props.params;
   const { relato } = await props.searchParams;
-  const { supabase } = await exigirPerfil("produtor");
-  const [{ data: p }, { data: talhoes }, { data: visitas }, { data: relatos }, { data: todosRelatos }] = await Promise.all([
+  const { supabase, perfil } = await exigirPerfil("produtor");
+  const [{ data: p }, { data: talhoes }, { data: visitas }, { data: relatos }, { data: todosRelatos }, { count: nPropriedades }, tecnico] = await Promise.all([
     supabase.from("propriedades").select("*").eq("id", id).maybeSingle<Propriedade>(),
     supabase.from("talhoes").select("*").eq("propriedade_id", id).order("criado_em").returns<Talhao[]>(),
     supabase.from("visitas").select("data").eq("propriedade_id", id).order("data", { ascending: false }).limit(1).returns<Pick<Visita, "data">[]>(),
     supabase.from("ocorrencias").select("*").eq("propriedade_id", id).is("talhao_id", null).order("criado_em", { ascending: false }).limit(10).returns<Ocorrencia[]>(),
     supabase.from("ocorrencias").select("*").eq("propriedade_id", id).order("criado_em", { ascending: false }).limit(30).returns<Ocorrencia[]>(),
+    supabase.from("propriedades").select("id", { count: "exact", head: true }),
+    tecnicoDoProdutor(supabase, perfil.id),
   ]);
   if (!p) notFound();
   const lista = talhoes ?? [];
@@ -43,13 +47,15 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
   const coordenadas = `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`;
   const local = [p.municipio, p.uf].filter(Boolean).join(" - ");
   const nomeTalhao = (tid: string) => lista.find((t) => t.id === tid)?.nome;
+  // Única propriedade: o início redireciona para cá, então a trilha não volta para a lista
+  const unica = nPropriedades === 1;
 
   return (
     <Pagina>
-      <Trilha passos={[
+      {!unica && <Trilha passos={[
         { rotulo: "Suas propriedades", href: "/produtor" },
         { rotulo: p.nome, tipo: "Propriedade" },
-      ]} />
+      ]} />}
 
       {relato === "ok" && <p role="status" className="mb-4 rounded-xl bg-ok-soft p-3 text-ok">Relato da propriedade inteira enviado. Seu técnico vai ver e responder aqui.</p>}
 
@@ -57,7 +63,7 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
         <header className="card mb-10 grid gap-5 p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <span className="eyebrow">Propriedade</span>
+              <span className="eyebrow">{unica ? `Olá, ${perfil.nome.split(" ")[0]} · sua propriedade` : "Propriedade"}</span>
               <h1 className="h1">{p.nome}</h1>
               {local && <p className="text-muted">{local}</p>}
             </div>
@@ -90,7 +96,17 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
             <div className="grid content-start gap-1">
               <dt className="eyebrow">Acompanhamento</dt>
               <dd>Última visita do técnico: <b>{dataBR(visitas?.[0]?.data)}</b></dd>
-              <dd>Tarefas pendentes: <b>{tarefas?.length ?? 0}</b></dd>
+              <dd>Tarefas pendentes: {tarefas?.length ? <a href="#tarefas" className="font-bold">{tarefas.length}, ver</a> : <b>0</b>}</dd>
+              {tecnico && (
+                <dd className="mt-1 grid gap-0.5 border-t border-line pt-2">
+                  <span>Seu técnico: <b>{tecnico.nome}</b>{tecnico.instituicao && <span className="text-muted"> · {tecnico.instituicao}</span>}</span>
+                  {tecnico.telefone && (
+                    <a href={linkWhatsApp(tecnico.telefone, `Olá, ${tecnico.nome.split(" ")[0]}! Aqui é ${perfil.nome.split(" ")[0]}, da ${p.nome}, pelo Field Shift.`)} target="_blank" rel="noreferrer" className="font-semibold">
+                      WhatsApp {formatarCelular(tecnico.telefone)}
+                    </a>
+                  )}
+                </dd>
+              )}
             </div>
           </dl>
         </header>
@@ -126,7 +142,7 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
       </UnidadeDeArea>
 
       {!!tarefas?.length && (
-        <section className="mt-10">
+        <section id="tarefas" className="mt-10 scroll-mt-24">
           <h2 className="h2 mb-3">O que fazer agora nesta propriedade</h2>
           <ul className="grid gap-3 lg:grid-cols-2">{tarefas.map((t) => <TarefaProdutor key={t.id} t={t} talhao={nomeTalhao(t.talhao_id)} />)}</ul>
         </section>

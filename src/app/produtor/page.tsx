@@ -1,21 +1,22 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Pagina, Selo, Vazio, num } from "@/components/ui";
 import { TarefaProdutor } from "@/components/tarefa";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { formatarCelular, linkWhatsApp } from "@/lib/contato";
-import type { Perfil, Propriedade, Talhao, Tarefa } from "@/lib/tipos";
+import { tecnicoDoProdutor } from "@/lib/tecnico-do-produtor";
+import type { Propriedade, Talhao, Tarefa } from "@/lib/tipos";
 
 export const metadata = { title: "Início" };
 
 export default async function InicioProdutor() {
   const { supabase, perfil } = await exigirPerfil("produtor");
-  const [{ data: props }, { data: cadastro }] = await Promise.all([
+  const [{ data: props }, tecnico] = await Promise.all([
     supabase.from("propriedades").select("*").order("criado_em").returns<Propriedade[]>(),
-    supabase.from("produtores").select("tecnico_id").eq("usuario_id", perfil.id).maybeSingle<{ tecnico_id: string }>(),
+    tecnicoDoProdutor(supabase, perfil.id),
   ]);
-  const { data: tecnico } = cadastro
-    ? await supabase.from("perfis").select("nome, telefone, instituicao").eq("id", cadastro.tecnico_id).maybeSingle<Pick<Perfil, "nome" | "telefone" | "instituicao">>()
-    : { data: null };
+  // Com uma propriedade só, a lista não ajuda: vai direto para ela (lá estão tarefas, tempo e o contato do técnico)
+  if (props?.length === 1) redirect(`/produtor/propriedades/${props[0].id}`);
   const primeiroNome = perfil.nome.split(" ")[0];
 
   const ids = (props ?? []).map((p) => p.id);
