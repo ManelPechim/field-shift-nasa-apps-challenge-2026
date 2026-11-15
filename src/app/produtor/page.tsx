@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { Pagina, Selo, Vazio, num } from "@/components/ui";
-import { TarefaProdutor } from "@/components/tarefa";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { formatarCelular, linkWhatsApp } from "@/lib/contato";
 import { tecnicoDoProdutor } from "@/lib/tecnico-do-produtor";
-import type { Propriedade, Talhao, Tarefa } from "@/lib/tipos";
+import type { Propriedade, Talhao } from "@/lib/tipos";
 
-export const metadata = { title: "Início" };
+export const metadata = { title: "Suas propriedades" };
 
 export default async function InicioProdutor() {
   const { supabase, perfil } = await exigirPerfil("produtor");
@@ -21,30 +20,18 @@ export default async function InicioProdutor() {
     ? await supabase.from("talhoes").select("*").in("propriedade_id", ids).order("criado_em").returns<Talhao[]>()
     : { data: [] as Talhao[] };
   const tIds = (talhoes ?? []).map((t) => t.id);
-  const [{ data: tarefas }, { data: planosNovos }] = tIds.length
-    ? await Promise.all([
-      supabase.from("tarefas").select("*").in("talhao_id", tIds).eq("status", "pendente").order("criado_em").returns<Tarefa[]>(),
-      // Planos sem resposta do produtor ou com dúvida já respondida: viram selo no card da propriedade
-      supabase.from("planos").select("talhao_id").in("talhao_id", tIds).eq("status", "publicado").or("resposta.is.null,and(resposta.eq.duvida,resposta_tecnico.not.is.null)").returns<{ talhao_id: string }[]>(),
-    ])
-    : [{ data: [] as Tarefa[] }, { data: [] as { talhao_id: string }[] }];
+  // Planos publicados que o produtor ainda não respondeu: viram selo no card da propriedade
+  const { data: planosNovos } = tIds.length
+    ? await supabase.from("planos").select("talhao_id").in("talhao_id", tIds).eq("status", "publicado").is("resposta", null).returns<{ talhao_id: string }[]>()
+    : { data: [] as { talhao_id: string }[] };
   const talhoesDe = (pid: string) => talhoes?.filter((t) => t.propriedade_id === pid) ?? [];
   const planosNovosDe = (pid: string) => { const ts = new Set(talhoesDe(pid).map((t) => t.id)); return planosNovos?.filter((x) => ts.has(x.talhao_id)).length ?? 0; };
-  const pendentesDe = (pid: string) => { const ts = new Set(talhoesDe(pid).map((t) => t.id)); return tarefas?.filter((x) => ts.has(x.talhao_id)).length ?? 0; };
-  const rotuloTalhao = (id: string) => {
-    const t = talhoes?.find((x) => x.id === id);
-    if (!t) return undefined;
-    return (props?.length ?? 0) > 1 ? `${t.nome} (${props?.find((p) => p.id === t.propriedade_id)?.nome})` : t.nome;
-  };
 
   return (
     <Pagina>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <span className="eyebrow">Área do produtor</span>
-          <h1 className="h1">Olá, {primeiroNome}</h1>
-        </div>
-        {!!props?.length && <Link href="/produtor/relatar" className="btn">Relatar algo na propriedade</Link>}
+      <div className="mb-6">
+        <span className="eyebrow">Área do produtor</span>
+        <h1 className="h1">Olá, {primeiroNome}</h1>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -59,7 +46,7 @@ export default async function InicioProdutor() {
               {props.map((p) => {
                 const ts = talhoesDe(p.id);
                 const soma = ts.reduce((a, t) => a + (t.area_ha ?? 0), 0);
-                const pend = pendentesDe(p.id);
+                const novos = planosNovosDe(p.id);
                 return (
                   <li key={p.id}>
                     <Link href={`/produtor/propriedades/${p.id}`} className="card grid h-full content-between gap-3 p-4 text-ink no-underline hover:border-brand">
@@ -72,10 +59,7 @@ export default async function InicioProdutor() {
                         <div><dt className="eyebrow">Talhões</dt><dd className="font-semibold">{ts.length}{ts.length > 0 && <span className="font-normal text-muted"> · {num(soma, 1)} ha</span>}</dd></div>
                       </dl>
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="flex flex-wrap gap-1.5">
-                          {planosNovosDe(p.id) > 0 && <Selo tom="info">Plano para ver</Selo>}
-                          {pend > 0 ? <Selo tom="atencao">{pend} tarefa{pend > 1 ? "s" : ""} pendente{pend > 1 ? "s" : ""}</Selo> : <Selo tom="bom">Nada pendente</Selo>}
-                        </span>
+                        {novos > 0 ? <Selo tom="info">Plano novo para ver</Selo> : <span />}
                         <span className="text-sm font-semibold text-brand">Abrir propriedade →</span>
                       </div>
                     </Link>
@@ -100,22 +84,10 @@ export default async function InicioProdutor() {
                   <a href={linkWhatsApp(tecnico.telefone, `Olá, ${tecnico.nome.split(" ")[0]}! Aqui é ${primeiroNome}, pelo Field Shift.`)} target="_blank" rel="noreferrer" className="btn btn-sm no-underline">Conversar no WhatsApp</a>
                 </>
               ) : <span className="text-sm text-muted">Celular não cadastrado.</span>}
-              <p className="text-xs text-muted">Para algo que aconteceu na lavoura, use “Relatar”: o relato fica guardado com o local, na propriedade ou no talhão.</p>
             </div>
           ) : <p className="text-sm text-muted">Nenhum técnico ligado à sua conta.</p>}
         </aside>
       </div>
-
-      {!!props?.length && (
-        <section id="tarefas" className="mt-10 scroll-mt-24">
-          <h2 className="h2 mb-3">O que fazer agora</h2>
-          {tarefas?.length ? (
-            <ul className="grid gap-3 lg:grid-cols-2">{tarefas.slice(0, 6).map((t) => <TarefaProdutor key={t.id} t={t} talhao={rotuloTalhao(t.talhao_id)} />)}</ul>
-          ) : (
-            <Vazio titulo="Nada pendente">Quando seu técnico publicar o plano da safra, as tarefas aparecem aqui.</Vazio>
-          )}
-        </section>
-      )}
     </Pagina>
   );
 }

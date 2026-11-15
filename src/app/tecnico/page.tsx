@@ -7,7 +7,7 @@ export const metadata = { title: "Clientes" };
 
 interface Linha {
   id: string; nome: string; telefone: string;
-  propriedades: { id: string; municipio: string | null; uf: string | null; area_ha: number | null; talhoes: { id: string; planos: { status: string; resposta: string | null; resposta_tecnico: string | null }[] }[]; visitas: { data: string }[] }[];
+  propriedades: { id: string; municipio: string | null; uf: string | null; area_ha: number | null; talhoes: { id: string; planos: { status: string; resposta: string | null }[] }[]; visitas: { data: string }[] }[];
 }
 
 /** Situação dos planos do cliente, do que mais pede ação do técnico para o que menos pede. */
@@ -16,7 +16,7 @@ function situacaoDosPlanos(c: Linha): [tom: "atencao" | "info" | "bom" | "neutro
   if (!talhoes.length) return null;
   const publicados = talhoes.flatMap((t) => t.planos.filter((pl) => pl.status === "publicado"));
   const semPlano = talhoes.filter((t) => !t.planos.length).length;
-  if (publicados.some((pl) => pl.resposta === "duvida" && !pl.resposta_tecnico)) return ["atencao", "Dúvida sobre o plano"];
+  if (publicados.some((pl) => pl.resposta === "duvida")) return ["atencao", "Dúvida sobre o plano"];
   if (semPlano) return ["atencao", semPlano === talhoes.length ? "Esperando o plano" : `${semPlano} ${semPlano > 1 ? "talhões" : "talhão"} sem plano`];
   if (talhoes.some((t) => t.planos.length && t.planos.every((pl) => pl.status !== "publicado"))) return ["neutro", "Plano em rascunho"];
   if (publicados.some((pl) => !pl.resposta)) return ["info", "Plano publicado, sem resposta"];
@@ -29,15 +29,11 @@ export default async function PainelTecnico(props: PageProps<"/tecnico">) {
   const { supabase, perfil } = await exigirPerfil("tecnico");
   let consulta = supabase
     .from("produtores")
-    .select("id, nome, telefone, propriedades(id, municipio, uf, area_ha, talhoes(id, planos(status, resposta, resposta_tecnico)), visitas(data))")
+    .select("id, nome, telefone, propriedades(id, municipio, uf, area_ha, talhoes(id, planos(status, resposta)), visitas(data))")
     .eq("tecnico_id", perfil.id)
     .order("nome");
   if (busca) consulta = consulta.ilike("nome", `%${busca}%`);
-  const [{ data: clientes }, { data: ocorrencias }, { data: duvidas }] = await Promise.all([
-    consulta.returns<Linha[]>(),
-    supabase.from("ocorrencias").select("id, tipo, descricao, criado_em, talhao_id, propriedade_id, talhoes(nome), propriedades(nome, produtores(nome))").eq("status", "nova").order("criado_em", { ascending: false }).limit(10),
-    supabase.from("planos").select("id, safra, duvida, respondido_em, talhao_id, talhoes(nome, propriedades(nome, produtores(nome)))").eq("resposta", "duvida").is("resposta_tecnico", null).order("respondido_em", { ascending: false }).limit(10),
-  ]);
+  const { data: clientes } = await consulta.returns<Linha[]>();
 
   return (
     <Pagina>
@@ -48,47 +44,6 @@ export default async function PainelTecnico(props: PageProps<"/tecnico">) {
         </div>
         <Link href="/tecnico/produtores/novo" className="btn">Novo cliente</Link>
       </div>
-
-      {!!duvidas?.length && (
-        <section className="mb-8">
-          <h2 className="h2 mb-2">Dúvidas sobre planos para responder</h2>
-          <ul className="grid gap-2">
-            {duvidas.map((d) => {
-              const t = d.talhoes as unknown as { nome: string; propriedades: { nome: string; produtores: { nome: string } } } | null;
-              return (
-                <li key={d.id}>
-                  <Link href={`/tecnico/talhoes/${d.talhao_id}?aba=plano`} className="card flex flex-wrap items-center gap-3 p-3 text-ink no-underline hover:border-brand">
-                    <Selo tom="atencao">Plano {d.safra}</Selo>
-                    <span className="min-w-0 flex-1 truncate">“{d.duvida}”</span>
-                    <span className="text-sm text-muted">{t?.propriedades.produtores.nome} · {t?.propriedades.nome} · {t?.nome} · {dataBR(d.respondido_em)}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-
-      {!!ocorrencias?.length && (
-        <section className="mb-8">
-          <h2 className="h2 mb-2">Relatos novos dos produtores</h2>
-          <ul className="grid gap-2">
-            {ocorrencias.map((o) => {
-              const t = o.talhoes as unknown as { nome: string } | null;
-              const p = o.propriedades as unknown as { nome: string; produtores: { nome: string } } | null;
-              return (
-                <li key={o.id}>
-                  <Link href={o.talhao_id ? `/tecnico/talhoes/${o.talhao_id}?aba=campo` : `/tecnico/propriedades/${o.propriedade_id}#relatos`} className="card flex flex-wrap items-center gap-3 p-3 text-ink no-underline hover:border-brand">
-                    <Selo tom="atencao">{o.tipo}</Selo>
-                    <span className="min-w-0 flex-1 truncate">{o.descricao || "Sem descrição"}</span>
-                    <span className="text-sm text-muted">{p?.produtores.nome} · {p?.nome} · {t?.nome ?? "propriedade inteira"} · {dataBR(o.criado_em)}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
 
       {(clientes?.length || busca) ? (
         <form method="get" className="mb-4 flex max-w-md gap-2">

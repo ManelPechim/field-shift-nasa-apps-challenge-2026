@@ -9,7 +9,6 @@ import type { Feature, FeatureCollection, Polygon } from "geojson";
 import { BuscaLocal } from "./busca-local";
 import { CAMADAS_NASA, LegendaSobreMapa, SobreCamada, type ChaveCamada } from "./camadas-nasa";
 import { IconeCancelar, IconeConcluir, IconeDesenhar, IconeDesfazer, IconeRefazer } from "./icones";
-import { COR_DA_SITUACAO, NOME_DA_SITUACAO, type PinoNoMapa } from "@/lib/pinos";
 
 // O Turbopack não empacota o worker do MapLibre; o build copia o arquivo para /public (ver "prebuild").
 setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
@@ -64,7 +63,6 @@ export function Mapa({
   altura = "h-[420px]",
   camadaInicial,
   camadas = true,
-  pinos,
 }: {
   talhoes: TalhaoNoMapa[];
   hrefTalhao?: string;
@@ -89,8 +87,6 @@ export function Mapa({
   camadaInicial?: ChaveCamada;
   /** false: só a imagem de satélite, sem o seletor de camadas da NASA */
   camadas?: boolean;
-  /** Relatos no local anexado; somem enquanto se desenha para não atrapalhar os toques */
-  pinos?: PinoNoMapa[];
 }) {
   const router = useRouter();
   const div = useRef<HTMLDivElement>(null);
@@ -135,8 +131,6 @@ export function Mapa({
       setPronto(true);
     });
     m.on("click", (e: MapMouseEvent) => {
-      // Toque num pino é dele (o pino tem o próprio link), não do talhão por baixo
-      if ((e.originalEvent.target as HTMLElement | null)?.closest?.(".maplibregl-marker[href]")) return;
       if (desenhandoRef.current) {
         pontos.current.push([e.lngLat.lng, e.lngLat.lat]);
         atualizarRascunho();
@@ -204,25 +198,6 @@ export function Mapa({
     });
     return () => rotulos.forEach((r) => r.remove());
   }, [chaveTalhoes, pronto]);
-
-  // Pinos (relatos): um link por pino, que leva ao relato
-  const chavePinos = JSON.stringify(pinos ?? []);
-  useEffect(() => {
-    const m = mapa.current;
-    const lista = JSON.parse(chavePinos) as PinoNoMapa[];
-    if (!m || !pronto || desenhando || !lista.length) return;
-    const criados = lista.map((p) => {
-      const el = document.createElement("a");
-      el.href = p.href;
-      el.title = p.titulo;
-      el.setAttribute("aria-label", p.titulo);
-      el.className = "block size-5 rounded-full border-[3px] border-white shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
-      el.style.background = p.cor;
-      el.addEventListener("click", (e) => { e.preventDefault(); router.push(p.href); });
-      return new Marker({ element: el }).setLngLat([p.lon, p.lat]).addTo(m);
-    });
-    return () => criados.forEach((c) => c.remove());
-  }, [chavePinos, pronto, desenhando, router]);
 
   // Talhão realçado
   useEffect(() => {
@@ -309,17 +284,6 @@ export function Mapa({
         {camada && <LegendaSobreMapa chave={camada} abaixo={desenhando} />}
       </div>
       </div>
-      {!!pinos?.length && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-          <b className="font-semibold">Relatos:</b>
-          {(Object.keys(COR_DA_SITUACAO) as (keyof typeof COR_DA_SITUACAO)[]).map((k) => (
-            <span key={k} className="inline-flex items-center gap-1.5">
-              <span className="size-3.5 rounded-full border-2 border-white shadow" style={{ background: COR_DA_SITUACAO[k] }} aria-hidden="true" />{NOME_DA_SITUACAO[k]}
-            </span>
-          ))}
-          <span className="text-muted">Toque no pino para abrir o relato.</span>
-        </div>
-      )}
       {camadas && <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
         <label htmlFor="camada" className="font-semibold">Camada da NASA:</label>
         <select id="camada" className="input w-auto min-h-9 py-1" value={camada}

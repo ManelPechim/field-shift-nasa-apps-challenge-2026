@@ -21,7 +21,7 @@ export interface DadosDaEdicao {
   ponto: [number, number];
   rotacoes: { id: string; nome: string }[];
   /** O que é apagado junto com o talhão */
-  vinculos: { amostras: number; planos: number; tarefas: number; relatos: number };
+  vinculos: { amostras: number; planos: number; tarefas: number };
 }
 
 function plural(n: number, um: string, varios: string) {
@@ -72,7 +72,6 @@ function Formulario({ d, aoFechar, aoSalvar }: { d: DadosDaEdicao; aoFechar: () 
     v.amostras && plural(v.amostras, "análise de solo", "análises de solo"),
     v.planos && plural(v.planos, "plano", "planos"),
     v.tarefas && plural(v.tarefas, "tarefa", "tarefas"),
-    v.relatos && plural(v.relatos, "relato do produtor", "relatos do produtor"),
   ].filter(Boolean) as string[];
   const ocupado = salvando || excluindo;
 
@@ -153,7 +152,7 @@ function Formulario({ d, aoFechar, aoSalvar }: { d: DadosDaEdicao; aoFechar: () 
                 Excluir <b>{d.nome}</b>?{" "}
                 {apagaJunto.length
                   ? <>Também serão apagados: <b>{apagaJunto.join(", ")}</b>.</>
-                  : "Não há análises, planos, tarefas nem relatos ligados a ele."}
+                  : "Não há análises, planos nem tarefas ligados a ele."}
                 {" "}As visitas técnicas ficam, como visitas da propriedade.
               </p>
               <div className="flex flex-wrap gap-2">

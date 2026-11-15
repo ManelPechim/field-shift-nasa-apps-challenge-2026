@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { CalendarioRotacao } from "@/components/graficos";
-import { TarefaProdutor } from "@/components/tarefa";
 import { Trilha } from "@/components/trilha";
 import { Pagina, Vazio, dataBR } from "@/components/ui";
 import { exigirPerfil } from "@/lib/supabase/server";
@@ -29,7 +28,6 @@ export default async function PlanoDoProdutor(props: PageProps<"/produtor/planos
   const hoje = rotacaoPorId(t.rotacao_atual);
   const proposta = rotacaoPorId(plano.rotacao_id);
   const regiao = regiaoDe(t.centroide_lat ?? 0);
-  const pendentes = tarefas?.filter((x) => x.status === "pendente").length ?? 0;
 
   return (
     <Pagina>
@@ -84,16 +82,26 @@ export default async function PlanoDoProdutor(props: PageProps<"/produtor/planos
 
           <section id="tarefas" className="scroll-mt-24">
             <h2 className="h2 mb-1">4. O que você precisa fazer</h2>
-            <p className="mb-3 text-sm text-muted">{pendentes ? `${pendentes} tarefa${pendentes > 1 ? "s" : ""} pendente${pendentes > 1 ? "s" : ""}. Marque cada uma quando fizer.` : "Tudo feito por enquanto."}</p>
-            {tarefas?.length
-              ? <ul className="grid gap-3">{tarefas.map((x) => <TarefaProdutor key={x.id} t={x} />)}</ul>
-              : <Vazio titulo="Sem tarefas neste plano" />}
+            <p className="mb-3 text-sm text-muted">Na ordem do plano: primeiro o que prepara o solo, depois os plantios.</p>
+            {tarefas?.length ? (
+              <ol className="grid gap-2">
+                {tarefas.map((x, i) => (
+                  <li key={x.id} className="card grid grid-cols-[2rem_minmax(0,1fr)] gap-x-3 p-3">
+                    <span className="font-display text-lg font-bold text-brand">{i + 1}</span>
+                    <div>
+                      <b className="leading-tight">{x.titulo}</b>
+                      {x.quando && <span className="text-sm text-muted"> · {x.quando}</span>}
+                      {x.descricao && <p className="text-sm text-muted">{x.descricao}</p>}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            ) : <Vazio titulo="Sem tarefas neste plano" />}
           </section>
         </div>
 
         <aside className="grid content-start gap-3 lg:sticky lg:top-24">
-          <RespostaAoPlano key={plano.respondido_em ?? "sem-resposta"} planoId={plano.id} resposta={plano.resposta} duvida={plano.duvida} respondidoEm={plano.respondido_em}
-            respostaTecnico={plano.resposta_tecnico} respostaTecnicoEm={plano.resposta_tecnico_em} nomeTecnico={tecnico?.nome.split(" ")[0] ?? "O técnico"} />
+          <RespostaAoPlano key={plano.respondido_em ?? "sem-resposta"} planoId={plano.id} resposta={plano.resposta} duvida={plano.duvida} respondidoEm={plano.respondido_em} />
           {tecnico?.telefone && (
             <a href={linkWhatsApp(tecnico.telefone, `Olá, ${tecnico.nome.split(" ")[0]}! Sobre o plano ${plano.safra} do ${t.nome}: `)} target="_blank" rel="noreferrer" className="btn-ghost no-underline">
               Falar com {tecnico.nome.split(" ")[0]} no WhatsApp · {formatarCelular(tecnico.telefone)}

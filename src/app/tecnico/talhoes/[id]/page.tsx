@@ -6,19 +6,17 @@ import { EditarTalhao } from "@/components/editar-talhao";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { dadosNasa } from "@/lib/dados";
 import { ROTACOES, nomeRotacao, regiaoDe, rotacaoPorId } from "@/lib/agro/culturas";
-import type { Amostra, Ocorrencia, Plano, Propriedade, Talhao, Tarefa, Visita } from "@/lib/tipos";
+import type { Amostra, Plano, Propriedade, Talhao, Tarefa, Visita } from "@/lib/tipos";
 import { AbaDados } from "./aba-dados";
 import { AbaSolo } from "./aba-solo";
 import { AbaRotacoes } from "./aba-rotacoes";
 import { AbaPlano } from "./aba-plano";
-import { AbaCampo } from "./aba-campo";
 
 const ABAS = [
   ["dados", "Dados da NASA"],
   ["solo", "Solo"],
   ["rotacoes", "Rotações"],
   ["plano", "Plano"],
-  ["campo", "Campo"],
 ] as const;
 type Aba = (typeof ABAS)[number][0];
 
@@ -30,19 +28,17 @@ export default async function PaginaTalhao(props: PageProps<"/tecnico/talhoes/[i
 
   const { data: t } = await supabase.from("talhoes").select("*").eq("id", id).maybeSingle<Talhao>();
   if (!t) notFound();
-  const [{ data: prop }, { data: visitas }, { data: amostras }, { data: planos }, { data: tarefas }, { data: ocorrencias }, { data: vizinhos }] = await Promise.all([
+  const [{ data: prop }, { data: visitas }, { data: amostras }, { data: planos }, { data: tarefas }, { data: vizinhos }] = await Promise.all([
     supabase.from("propriedades").select("*, produtores(id, nome, telefone)").eq("id", t.propriedade_id).single<Propriedade & { produtores: { id: string; nome: string; telefone: string } }>(),
     supabase.from("visitas").select("*").eq("propriedade_id", t.propriedade_id).or(`talhao_id.eq.${t.id},talhao_id.is.null`).order("data", { ascending: false }).returns<Visita[]>(),
     supabase.from("amostras").select("*").eq("talhao_id", t.id).order("criado_em", { ascending: false }).returns<Amostra[]>(),
     supabase.from("planos").select("*").eq("talhao_id", t.id).order("criado_em", { ascending: false }).returns<Plano[]>(),
     supabase.from("tarefas").select("*").eq("talhao_id", t.id).order("criado_em").returns<Tarefa[]>(),
-    supabase.from("ocorrencias").select("*").eq("talhao_id", t.id).order("criado_em", { ascending: false }).returns<Ocorrencia[]>(),
     supabase.from("talhoes").select("id, nome, geojson, cor").eq("propriedade_id", t.propriedade_id).neq("id", t.id).order("criado_em").returns<Pick<Talhao, "id" | "nome" | "geojson" | "cor">[]>(),
   ]);
   const visita = visitas?.find((v) => v.talhao_id === t.id) ?? visitas?.[0] ?? null;
   const precisaNasa = aba === "dados" || aba === "rotacoes";
   const nasa = precisaNasa ? await dadosNasa(supabase, t, sp.atualizar === "1") : null;
-  const novas = ocorrencias?.filter((o) => o.status === "nova").length ?? 0;
   const rotAtual = rotacaoPorId(t.rotacao_atual);
 
   return (
@@ -66,7 +62,7 @@ export default async function PaginaTalhao(props: PageProps<"/tecnico/talhoes/[i
               id: t.id, nome: t.nome, cor: t.cor, rotacaoAtual: t.rotacao_atual, areaHa: t.area_ha, geojson: t.geojson,
               vizinhos: vizinhos ?? [], limite: prop?.limite ?? null, ponto: [prop?.lon ?? t.centroide_lon ?? 0, prop?.lat ?? t.centroide_lat ?? 0],
               rotacoes: ROTACOES.filter((r) => r.atual && r.regiao === regiaoDe(t.centroide_lat ?? prop?.lat ?? 0)).map((r) => ({ id: r.id, nome: nomeRotacao(r) })),
-              vinculos: { amostras: amostras?.length ?? 0, planos: planos?.length ?? 0, tarefas: tarefas?.length ?? 0, relatos: ocorrencias?.length ?? 0 },
+              vinculos: { amostras: amostras?.length ?? 0, planos: planos?.length ?? 0, tarefas: tarefas?.length ?? 0 },
               }} />
           </div>
           <p className="text-muted">Hoje: {rotAtual ? nomeRotacao(rotAtual) : "rotação não informada"}</p>
@@ -78,7 +74,7 @@ export default async function PaginaTalhao(props: PageProps<"/tecnico/talhoes/[i
         {ABAS.map(([k, n]) => (
           <Link key={k} href={`/tecnico/talhoes/${t.id}?aba=${k}`} aria-current={aba === k ? "page" : undefined}
             className={`whitespace-nowrap border-b-3 px-3 py-2 text-sm font-semibold no-underline ${aba === k ? "border-brand text-brand" : "border-transparent text-muted hover:text-ink"}`}>
-            {n}{k === "campo" && novas > 0 ? ` (${novas})` : ""}
+            {n}
           </Link>
         ))}
       </nav>
@@ -87,7 +83,6 @@ export default async function PaginaTalhao(props: PageProps<"/tecnico/talhoes/[i
       {aba === "solo" && <AbaSolo talhao={t} amostras={amostras ?? []} />}
       {aba === "rotacoes" && nasa && <AbaRotacoes talhao={t} clima={nasa.clima} relevo={nasa.relevo} visita={visita} amostra={amostras?.[0] ?? null} sp={sp} />}
       {aba === "plano" && <AbaPlano talhao={t} planos={planos ?? []} tarefas={tarefas ?? []} produtor={prop?.produtores ?? null} />}
-      {aba === "campo" && <AbaCampo talhao={t} ocorrencias={ocorrencias ?? []} />}
     </Pagina>
   );
 }

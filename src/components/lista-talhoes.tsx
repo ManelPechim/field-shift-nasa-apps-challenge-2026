@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import type { Polygon } from "geojson";
 import { Area } from "./area";
 import { IconeVerNoMapa } from "./icones";
-import { Selo } from "./ui";
 
 export { bboxDe } from "@/lib/geometria";
 
@@ -17,7 +16,6 @@ export interface TalhaoDaLista {
   cor: string;
   /** Linha abaixo do nome: rotação (técnico) ou plano da safra (produtor) */
   descricao: string;
-  pendentes?: number;
 }
 
 /** Cartões dos talhões com a cor do mapa, "Ver no mapa" e "Abrir talhão". */
@@ -44,7 +42,6 @@ export function ListaDeTalhoes({
             <div className="min-w-0">
               <b className="block font-display leading-tight">{t.nome}</b>
               <span className="text-sm text-muted"><Area ha={t.area_ha} /> · {t.descricao}</span>
-              {!!t.pendentes && <div className="mt-1"><Selo tom="atencao">{t.pendentes} tarefa{t.pendentes > 1 ? "s" : ""} pendente{t.pendentes > 1 ? "s" : ""}</Selo></div>}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">

@@ -5,8 +5,8 @@ const PASSOS = [
   ["1", "Visita e mapa", "O técnico desenha os talhões sobre a imagem de satélite e registra o que viu no campo: relevo, erosão, alagamento, manejo e objetivos do produtor."],
   ["2", "Dados da NASA", "Para cada talhão, o app busca 20 anos de clima diário (NASA POWER), o relevo (SRTM) e camadas de vegetação e umidade do solo (MODIS, SMAP, HLS)."],
   ["3", "Laudo de solo", "O técnico anexa o laudo do laboratório e digita os números; o app interpreta a fertilidade e a saúde do solo. A leitura do laudo por IA está planejada."],
-  ["4", "Plano para o produtor", "O app compara a rotação atual com alternativas. O técnico escolhe, ajusta e publica um plano com tarefas em linguagem simples."],
-  ["5", "Campo e acompanhamento", "O produtor vê o que fazer, marca o que fez e relata problemas com foto. Os alertas usam os dados recentes da NASA."],
+  ["4", "Comparar rotações", "O app compara a rotação atual com duas alternativas, em três cenários de chuva, pelas prioridades do produtor. Cada opção mostra o porquê, as evidências, os riscos e o que falta saber, num relatório de decisão."],
+  ["5", "Plano para o produtor", "O produtor vê no celular o plano escolhido e as alternativas comparadas, e responde: combinado ou tenho dúvida."],
 ];
 
 export default function Inicio() {

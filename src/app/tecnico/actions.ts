@@ -281,9 +281,9 @@ export async function criarPlano(form: FormData) {
       quando: m ? `${ano} · a partir de ${MESES_NOME[m[0] - 1]}` : ano,
     });
   });
-  tarefas.push({ titulo: "Relatar como foi a safra", descricao: "Conte no app se teve praga, doença, chuva forte ou seca, e como foi a colheita.", quando: "Depois da colheita" });
+  tarefas.push({ titulo: "Avaliar a safra com o técnico", descricao: "Conte se teve praga, doença, chuva forte ou seca, e como foi a colheita.", quando: "Depois da colheita" });
   // Inseridas juntas, teriam o mesmo criado_em e a ordem na tela mudaria a cada carga.
-  // 1 ms entre elas mantém a ordem do plano: correções do solo, depois plantios, depois o relato da safra.
+  // 1 ms entre elas mantém a ordem do plano: correções do solo, depois plantios, depois a avaliação da safra.
   const base = Date.now();
   await supabase.from("tarefas").insert(tarefas.map((t, i) => ({ ...t, talhao_id: talhaoId, plano_id: plano.id, criado_em: new Date(base + i).toISOString() })));
   redirect(`/tecnico/talhoes/${talhaoId}?aba=plano`);
@@ -299,21 +299,9 @@ export async function salvarPlano(form: FormData) {
     justificativa: txt(form, "justificativa"),
     safra: txt(form, "safra") ?? "2026/27",
     // Publicar (de novo) é uma versão nova: o produtor vê como plano novo e responde outra vez
-    ...(publicar ? { status: "publicado", publicado_em: new Date().toISOString(), visto_em: null, resposta: null, duvida: null, respondido_em: null, resposta_tecnico: null, resposta_tecnico_em: null } : {}),
+    ...(publicar ? { status: "publicado", publicado_em: new Date().toISOString(), visto_em: null, resposta: null, duvida: null, respondido_em: null } : {}),
   }).eq("id", id);
   revalidatePath(`/tecnico/talhoes/${talhaoId}`);
-}
-
-/** Resposta do técnico à dúvida do produtor sobre o plano; o produtor vê na tela do plano. */
-export async function responderDuvidaPlano(form: FormData) {
-  const { supabase } = await exigirPerfil("tecnico");
-  const id = String(form.get("plano_id"));
-  const talhaoId = String(form.get("talhao_id"));
-  const texto = txt(form, "resposta_tecnico");
-  if (!texto) return;
-  await supabase.from("planos").update({ resposta_tecnico: texto, resposta_tecnico_em: new Date().toISOString() }).eq("id", id).eq("resposta", "duvida");
-  revalidatePath(`/tecnico/talhoes/${talhaoId}`);
-  revalidatePath("/tecnico");
 }
 
 export async function excluirPlano(form: FormData) {
@@ -335,12 +323,4 @@ export async function removerTarefa(form: FormData) {
   const { supabase } = await exigirPerfil("tecnico");
   await supabase.from("tarefas").delete().eq("id", String(form.get("tarefa_id")));
   revalidatePath(`/tecnico/talhoes/${String(form.get("talhao_id"))}`);
-}
-
-export async function responderOcorrencia(form: FormData) {
-  const { supabase } = await exigirPerfil("tecnico");
-  await supabase.from("ocorrencias").update({ status: txt(form, "status") ?? "vista", resposta_tecnico: txt(form, "resposta") }).eq("id", String(form.get("ocorrencia_id")));
-  const voltar = String(form.get("voltar") ?? "");
-  if (voltar.startsWith("/tecnico/")) revalidatePath(voltar);
-  revalidatePath("/tecnico");
 }

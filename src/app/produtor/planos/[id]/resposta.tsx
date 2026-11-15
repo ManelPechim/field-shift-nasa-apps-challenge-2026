@@ -9,55 +9,28 @@ export function MarcarVisto({ planoId }: { planoId: string }) {
   return null;
 }
 
-const data = (d: string | null) => (d ? new Date(d).toLocaleDateString("pt-BR") : "");
-
-/** "Combinado" ou "Tenho dúvida"; depois de responder, mostra a conversa e deixa mudar.
+/** "Combinado" ou "Tenho dúvida": o julgamento do produtor sobre o plano. A conversa segue pelo WhatsApp.
  *  Use com key={respondidoEm}: a resposta nova remonta o componente e limpa o estado do formulário. */
-export function RespostaAoPlano({ planoId, resposta, duvida, respondidoEm, respostaTecnico, respostaTecnicoEm, nomeTecnico }: {
+export function RespostaAoPlano({ planoId, resposta, duvida, respondidoEm }: {
   planoId: string;
   resposta: "combinado" | "duvida" | null;
   duvida: string | null;
   respondidoEm: string | null;
-  respostaTecnico: string | null;
-  respostaTecnicoEm: string | null;
-  nomeTecnico: string;
 }) {
   const [estado, acao, enviando] = useActionState(responderPlano, undefined);
   const [escrevendo, setEscrevendo] = useState(false);
   const [mudando, setMudando] = useState(false);
 
-  // A conversa (dúvida e resposta do técnico) aparece enquanto existir, também depois de combinar
-  const conversa = duvida && (
-    <div className="grid gap-2 text-sm">
-      <p className="rounded-lg bg-surface px-3 py-2"><b>Você</b>{resposta === "duvida" && respondidoEm && <span className="text-muted"> · {data(respondidoEm)}</span>}<br />“{duvida}”</p>
-      {respostaTecnico
-        ? <p className="rounded-lg border-l-4 border-brand bg-surface px-3 py-2"><b>{nomeTecnico}</b> <span className="text-muted">· {data(respostaTecnicoEm)}</span><br />“{respostaTecnico}”</p>
-        : resposta === "duvida" && <p className="text-muted">{nomeTecnico} ainda não respondeu. A resposta aparece aqui, ou chega pelo WhatsApp.</p>}
-    </div>
-  );
-
   if (resposta && !mudando) {
-    // Dúvida respondida: a próxima ação é do produtor
-    if (resposta === "duvida" && respostaTecnico) {
-      return (
-        <form action={acao} className="grid gap-3 rounded-2xl border-2 border-brand bg-brand-soft p-4">
-          <input type="hidden" name="plano_id" value={planoId} />
-          <b className="font-display text-lg">{nomeTecnico} respondeu sua dúvida</b>
-          {conversa}
-          <p className="text-sm">Com essa resposta, o plano fica combinado?</p>
-          <div className="flex flex-wrap gap-2">
-            <button className="btn" name="resposta" value="combinado" disabled={enviando}>{enviando ? "Enviando…" : "Combinado"}</button>
-            <button type="button" className="btn-ghost" onClick={() => { setMudando(true); setEscrevendo(true); }} disabled={enviando}>Ainda tenho dúvida</button>
-          </div>
-          {estado?.erro && <p role="alert" className="rounded-lg bg-bad-soft p-3 text-sm text-bad">{estado.erro}</p>}
-        </form>
-      );
-    }
     return (
       <div className={`grid gap-2 rounded-2xl p-4 ${resposta === "combinado" ? "bg-ok-soft" : "bg-sat-soft"}`} role="status">
         <b className="font-display text-lg">{resposta === "combinado" ? "Você combinou este plano com o técnico." : "Você mandou uma dúvida ao técnico."}</b>
-        {resposta === "combinado" && respondidoEm && <p className="text-sm text-muted">Em {data(respondidoEm)}. As tarefas abaixo seguem valendo.</p>}
-        {conversa}
+        {resposta === "duvida" && duvida && <p className="text-sm">“{duvida}”</p>}
+        {respondidoEm && (
+          <p className="text-sm text-muted">
+            Em {new Date(respondidoEm).toLocaleDateString("pt-BR")}.{resposta === "duvida" && " A dúvida chega ao técnico na hora; a conversa continua pelo WhatsApp."}
+          </p>
+        )}
         <button type="button" className="justify-self-start text-sm font-semibold text-brand underline" onClick={() => setMudando(true)}>Mudar minha resposta</button>
       </div>
     );

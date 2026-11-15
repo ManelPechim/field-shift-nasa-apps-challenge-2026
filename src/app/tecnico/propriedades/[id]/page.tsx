@@ -3,30 +3,26 @@ import { notFound } from "next/navigation";
 import { Area, SeletorDeUnidade, UnidadeDeArea } from "@/components/area";
 import { BotaoCopiar } from "@/components/copiar";
 import { IconeRota } from "@/components/icones";
-import { RelatosParaResponder } from "@/components/relatos";
 import { Trilha } from "@/components/trilha";
 import { Pagina, Selo, Vazio, dataBR } from "@/components/ui";
 import { exigirPerfil } from "@/lib/supabase/server";
-import { pinosDosRelatos } from "@/lib/pinos";
 import { ROTACOES, nomeRotacao, regiaoDe, rotacaoPorId } from "@/lib/agro/culturas";
 import { criarTalhao } from "@/app/tecnico/actions";
-import type { Ocorrencia, Propriedade, Talhao, Visita } from "@/lib/tipos";
+import type { Propriedade, Talhao, Visita } from "@/lib/tipos";
 import { TalhoesDaPropriedade } from "./talhoes-da-propriedade";
 
 type Contagem = { count: number }[];
-type TalhaoComContagens = Talhao & { amostras: Contagem; planos: Contagem; tarefas: Contagem; ocorrencias: Contagem };
+type TalhaoComContagens = Talhao & { amostras: Contagem; planos: Contagem; tarefas: Contagem };
 
 export default async function PaginaPropriedade(props: PageProps<"/tecnico/propriedades/[id]">) {
   const { id } = await props.params;
   const { excluido } = await props.searchParams;
   const { supabase } = await exigirPerfil("tecnico");
-  const [{ data: p }, { data: talhoes }, { data: visitas }, { data: relatos }, { data: todosRelatos }] = await Promise.all([
+  const [{ data: p }, { data: talhoes }, { data: visitas }] = await Promise.all([
     supabase.from("propriedades").select("*, produtores(id, nome)").eq("id", id).maybeSingle<Propriedade & { produtores: { id: string; nome: string } }>(),
     // Contagens: o modal de edição diz o que sai junto se o talhão for excluído
-    supabase.from("talhoes").select("*, amostras(count), planos(count), tarefas(count), ocorrencias(count)").eq("propriedade_id", id).order("criado_em").returns<TalhaoComContagens[]>(),
+    supabase.from("talhoes").select("*, amostras(count), planos(count), tarefas(count)").eq("propriedade_id", id).order("criado_em").returns<TalhaoComContagens[]>(),
     supabase.from("visitas").select("*").eq("propriedade_id", id).order("data", { ascending: false }).returns<Visita[]>(),
-    supabase.from("ocorrencias").select("*").eq("propriedade_id", id).is("talhao_id", null).order("criado_em", { ascending: false }).returns<Ocorrencia[]>(),
-    supabase.from("ocorrencias").select("*").eq("propriedade_id", id).order("criado_em", { ascending: false }).limit(30).returns<Ocorrencia[]>(),
   ]);
   if (!p) notFound();
   const lista = talhoes ?? [];
@@ -103,17 +99,10 @@ export default async function PaginaPropriedade(props: PageProps<"/tecnico/propr
             vizinhos: lista.filter((x) => x.id !== t.id).map((x) => ({ id: x.id, nome: x.nome, geojson: x.geojson, cor: x.cor })),
             limite: p.limite, ponto: [p.lon, p.lat] as [number, number],
             rotacoes: ROTACOES.filter((r) => r.atual && r.regiao === regiaoDe(t.centroide_lat ?? p.lat)).map((r) => ({ id: r.id, nome: nomeRotacao(r) })),
-            vinculos: { amostras: t.amostras[0]?.count ?? 0, planos: t.planos[0]?.count ?? 0, tarefas: t.tarefas[0]?.count ?? 0, relatos: t.ocorrencias[0]?.count ?? 0 },
+            vinculos: { amostras: t.amostras[0]?.count ?? 0, planos: t.planos[0]?.count ?? 0, tarefas: t.tarefas[0]?.count ?? 0 },
           }]))}
-          pinos={pinosDosRelatos(todosRelatos ?? [], (tid) => lista.find((t) => t.id === tid)?.nome, (o) => (o.talhao_id ? `/tecnico/talhoes/${o.talhao_id}?aba=campo` : `/tecnico/propriedades/${p.id}#relatos`))}
         />
       </UnidadeDeArea>
-
-      <section id="relatos" className="mt-10 scroll-mt-24">
-        <h2 className="h2 mb-1">Relatos da propriedade inteira {!!relatos?.length && <span className="font-normal text-muted">({relatos.length})</span>}</h2>
-        <p className="mb-3 text-sm text-muted">O que o produtor relatou para a propriedade toda (granizo, geada, enxurrada…). Relatos de um talhão ficam na aba Campo do talhão.</p>
-        {relatos?.length ? <RelatosParaResponder ocorrencias={relatos} voltar={`/tecnico/propriedades/${p.id}`} /> : <Vazio titulo="Nenhum relato da propriedade inteira" />}
-      </section>
 
       <section className="mt-10">
         <h2 className="h2 mb-3">Visitas técnicas</h2>

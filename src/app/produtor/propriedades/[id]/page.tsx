@@ -4,42 +4,33 @@ import { Area, SeletorDeUnidade, UnidadeDeArea } from "@/components/area";
 import { BotaoCopiar } from "@/components/copiar";
 import { IconeRota } from "@/components/icones";
 import { Trilha } from "@/components/trilha";
-import { TarefaProdutor } from "@/components/tarefa";
-import { RelatosDoProdutor } from "@/components/relatos";
-import { Pagina, Vazio, dataBR } from "@/components/ui";
+import { Pagina, dataBR } from "@/components/ui";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { dadosNasa } from "@/lib/dados";
 import { alertasDoClima } from "@/lib/alertas";
-import { pinosDosRelatos } from "@/lib/pinos";
 import { formatarCelular, linkWhatsApp } from "@/lib/contato";
 import { tecnicoDoProdutor } from "@/lib/tecnico-do-produtor";
-import type { Ocorrencia, Plano, Propriedade, Talhao, Tarefa, Visita } from "@/lib/tipos";
+import type { Plano, Propriedade, Talhao, Visita } from "@/lib/tipos";
 import { TalhoesEMapa } from "./talhoes-e-mapa";
 
-type PlanoResumo = Pick<Plano, "id" | "talhao_id" | "rotacao_nome" | "safra" | "visto_em" | "resposta" | "resposta_tecnico">;
+type PlanoResumo = Pick<Plano, "id" | "talhao_id" | "rotacao_nome" | "safra" | "visto_em" | "resposta">;
 
 export default async function PropriedadeProdutor(props: PageProps<"/produtor/propriedades/[id]">) {
   const { id } = await props.params;
-  const { relato } = await props.searchParams;
   const { supabase, perfil } = await exigirPerfil("produtor");
-  const [{ data: p }, { data: talhoes }, { data: visitas }, { data: relatos }, { data: todosRelatos }, { count: nPropriedades }, tecnico] = await Promise.all([
+  const [{ data: p }, { data: talhoes }, { data: visitas }, { count: nPropriedades }, tecnico] = await Promise.all([
     supabase.from("propriedades").select("*").eq("id", id).maybeSingle<Propriedade>(),
     supabase.from("talhoes").select("*").eq("propriedade_id", id).order("criado_em").returns<Talhao[]>(),
     supabase.from("visitas").select("data").eq("propriedade_id", id).order("data", { ascending: false }).limit(1).returns<Pick<Visita, "data">[]>(),
-    supabase.from("ocorrencias").select("*").eq("propriedade_id", id).is("talhao_id", null).order("criado_em", { ascending: false }).limit(10).returns<Ocorrencia[]>(),
-    supabase.from("ocorrencias").select("*").eq("propriedade_id", id).order("criado_em", { ascending: false }).limit(30).returns<Ocorrencia[]>(),
     supabase.from("propriedades").select("id", { count: "exact", head: true }),
     tecnicoDoProdutor(supabase, perfil.id),
   ]);
   if (!p) notFound();
   const lista = talhoes ?? [];
   const tIds = lista.map((t) => t.id);
-  const [{ data: tarefas }, { data: planos }] = tIds.length
-    ? await Promise.all([
-      supabase.from("tarefas").select("*").in("talhao_id", tIds).eq("status", "pendente").order("criado_em").returns<Tarefa[]>(),
-      supabase.from("planos").select("id, talhao_id, rotacao_nome, safra, visto_em, resposta, resposta_tecnico").in("talhao_id", tIds).eq("status", "publicado").order("publicado_em", { ascending: false }).returns<PlanoResumo[]>(),
-    ])
-    : [{ data: [] as Tarefa[] }, { data: [] as PlanoResumo[] }];
+  const { data: planos } = tIds.length
+    ? await supabase.from("planos").select("id, talhao_id, rotacao_nome, safra, visto_em, resposta").in("talhao_id", tIds).eq("status", "publicado").order("publicado_em", { ascending: false }).returns<PlanoResumo[]>()
+    : { data: [] as PlanoResumo[] };
   // O clima da NASA POWER tem grade de ~50 km: o primeiro talhão vale para a propriedade toda
   const nasa = lista[0] ? await dadosNasa(supabase, lista[0]).catch(() => null) : null;
   const alertas = alertasDoClima(nasa?.clima ?? null);
@@ -49,8 +40,8 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
   const coordenadas = `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`;
   const local = [p.municipio, p.uf].filter(Boolean).join(" - ");
   const nomeTalhao = (tid: string) => lista.find((t) => t.id === tid)?.nome;
-  // Em destaque no topo: planos sem resposta e dúvidas que o técnico já respondeu (a vez é do produtor)
-  const semResposta = (planos ?? []).filter((x) => !x.resposta || (x.resposta === "duvida" && x.resposta_tecnico));
+  // Em destaque no topo: planos publicados que o produtor ainda não respondeu
+  const semResposta = (planos ?? []).filter((x) => !x.resposta);
   // Única propriedade: o login abre direto aqui, então o cabeçalho cumprimenta o produtor
   const unica = nPropriedades === 1;
 
@@ -61,26 +52,15 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
         { rotulo: p.nome, tipo: "Propriedade" },
       ]} />
 
-      {relato === "ok" && <p role="status" className="mb-4 rounded-xl bg-ok-soft p-3 text-ok">Relato da propriedade inteira enviado. Seu técnico vai ver e responder aqui.</p>}
-
       {semResposta.length > 0 && (
         <section aria-label="Planos para responder" className="mb-6 grid gap-2">
           {semResposta.map((pl) => (
             <div key={pl.id} className="flex flex-wrap items-center gap-3 rounded-2xl border-2 border-brand bg-brand-soft p-4">
               <div className="min-w-0 flex-1">
-                {pl.resposta_tecnico ? (
-                  <>
-                    <span className="eyebrow">Resposta do técnico</span>
-                    <p><b>Seu técnico respondeu sua dúvida</b> sobre o plano {pl.safra} do talhão <b>{nomeTalhao(pl.talhao_id)}</b>.</p>
-                  </>
-                ) : (
-                  <>
-                    <span className="eyebrow">{pl.visto_em ? "Esperando sua resposta" : "Plano novo"}</span>
-                    <p><b>Seu técnico publicou o plano da safra {pl.safra}</b> para o talhão <b>{nomeTalhao(pl.talhao_id)}</b>: {pl.rotacao_nome}.</p>
-                  </>
-                )}
+                <span className="eyebrow">{pl.visto_em ? "Esperando sua resposta" : "Plano novo"}</span>
+                <p><b>Seu técnico publicou o plano da safra {pl.safra}</b> para o talhão <b>{nomeTalhao(pl.talhao_id)}</b>: {pl.rotacao_nome}.</p>
               </div>
-              <Link href={`/produtor/planos/${pl.id}`} className="btn">{pl.resposta_tecnico ? "Ver a resposta" : "Ver o plano"}</Link>
+              <Link href={`/produtor/planos/${pl.id}`} className="btn">Ver o plano</Link>
             </div>
           ))}
         </section>
@@ -88,13 +68,10 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
 
       <UnidadeDeArea>
         <header className="card mb-10 grid gap-5 p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <span className="eyebrow">{unica ? `Olá, ${perfil.nome.split(" ")[0]} · sua propriedade` : "Propriedade"}</span>
-              <h1 className="h1">{p.nome}</h1>
-              {local && <p className="text-muted">{local}</p>}
-            </div>
-            <Link href={`/produtor/propriedades/${p.id}/relatar`} className="btn">Relatar algo desta propriedade</Link>
+          <div>
+            <span className="eyebrow">{unica ? `Olá, ${perfil.nome.split(" ")[0]} · sua propriedade` : "Propriedade"}</span>
+            <h1 className="h1">{p.nome}</h1>
+            {local && <p className="text-muted">{local}</p>}
           </div>
 
           <dl className="grid gap-4 border-t border-line pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
@@ -123,7 +100,6 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
             <div className="grid content-start gap-1">
               <dt className="eyebrow">Acompanhamento</dt>
               <dd>Última visita do técnico: <b>{dataBR(visitas?.[0]?.data)}</b></dd>
-              <dd>Tarefas pendentes: {tarefas?.length ? <a href="#tarefas" className="font-bold">{tarefas.length}, ver</a> : <b>0</b>}</dd>
               {tecnico && (
                 <dd className="mt-1 grid gap-0.5 border-t border-line pt-2">
                   <span>Seu técnico: <b>{tecnico.nome}</b>{tecnico.instituicao && <span className="text-muted"> · {tecnico.instituicao}</span>}</span>
@@ -159,27 +135,12 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
             return {
               id: t.id, nome: t.nome, geojson: t.geojson, area_ha: t.area_ha, cor: t.cor,
               descricao: pl ? `Plano ${pl.safra}: ${pl.rotacao_nome}` : "Plano ainda não publicado",
-              pendentes: tarefas?.filter((x) => x.talhao_id === t.id).length ?? 0,
             };
           })}
           limite={p.limite}
           ponto={[p.lon, p.lat]}
-          pinos={pinosDosRelatos(todosRelatos ?? [], nomeTalhao, (o) => (o.talhao_id ? `/produtor/talhoes/${o.talhao_id}` : `/produtor/propriedades/${p.id}#relatos`))}
         />
       </UnidadeDeArea>
-
-      <section id="tarefas" className="mt-10 scroll-mt-24">
-        <h2 className="h2 mb-3">O que fazer agora nesta propriedade</h2>
-        {tarefas?.length
-          ? <ul className="grid gap-3 lg:grid-cols-2">{tarefas.map((t) => <TarefaProdutor key={t.id} t={t} talhao={nomeTalhao(t.talhao_id)} />)}</ul>
-          : <Vazio titulo="Nada pendente">Quando seu técnico publicar o plano da safra, as tarefas aparecem aqui.</Vazio>}
-      </section>
-
-      <section id="relatos" className="mt-10 scroll-mt-24">
-        <h2 className="h2 mb-1">Relatos da propriedade inteira</h2>
-        <p className="mb-3 text-sm text-muted">Os relatos de um talhão ficam na página daquele talhão.</p>
-        {relatos?.length ? <RelatosDoProdutor ocorrencias={relatos} /> : <p className="text-sm text-muted">Nada relatado para a propriedade inteira ainda.</p>}
-      </section>
     </Pagina>
   );
 }
