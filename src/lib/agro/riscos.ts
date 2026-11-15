@@ -58,7 +58,8 @@ export function calcularRiscos(
   let motivoAlag = "Sem sinais de alagamento.";
   if (visita?.alagamento) {
     alagamento = visita.alagamento === "frequente" ? 3 : visita.alagamento === "as_vezes" ? 2 : 0;
-    motivoAlag = visita.alagamento === "nao" ? "O técnico não viu sinais de alagamento na visita." : "Informado na visita técnica.";
+    motivoAlag = visita.alagamento === "nao" ? "O técnico não viu sinais de alagamento na visita."
+      : `Na visita, o técnico viu a água empoçar ${visita.alagamento === "frequente" ? "com frequência" : "às vezes, em chuva forte"}.`;
   } else if (relevo && relevo.declividade_media < 2 && nivelExtrema >= 2) {
     alagamento = 1;
     motivoAlag = "Área plana numa região de chuvas fortes. Confirme na visita se a água acumula.";

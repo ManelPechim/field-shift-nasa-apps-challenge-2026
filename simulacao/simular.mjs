@@ -258,7 +258,7 @@ async function cadastrarCliente(tec, c, { mostrarNasa }) {
       await secao.locator(`label[title^="${t.cor}"]`).click();
       if (t.rotacao) await secao.locator("#rotacao_atual").selectOption({ index: t.rotacao });
       await Promise.all([tec.waitForURL("**/tecnico/talhoes/**", { timeout: 120_000 }), secao.getByRole("button", { name: "Salvar talhão" }).click()]);
-      await tec.getByRole("heading", { name: "Riscos do talhão" }).waitFor({ timeout: 120_000 });
+      await tec.getByRole("heading", { name: "Riscos que pesam na decisão" }).waitFor({ timeout: 120_000 });
     });
   }
 
@@ -269,8 +269,9 @@ async function cadastrarCliente(tec, c, { mostrarNasa }) {
 
   if (mostrarNasa) {
     await passo(tec, "Técnico", "Lê os dados da NASA do talhão", "Riscos de alagamento, erosão, geada, seca e calor calculados com 20 anos de NASA POWER e o relevo do SRTM.", async () => {
+      await tec.goto(`${urlTalhao}?aba=dados`);
       await tec.getByRole("heading", { name: "Riscos do talhão" }).waitFor();
-      await tec.getByRole("heading", { name: "Clima mês a mês (2005–2024)" }).scrollIntoViewIfNeeded();
+      await tec.getByRole("heading", { name: "Como é o ano neste lugar" }).scrollIntoViewIfNeeded();
     });
   }
 
@@ -278,6 +279,7 @@ async function cadastrarCliente(tec, c, { mostrarNasa }) {
     await tec.getByRole("link", { name: "Registrar visita" }).first().click();
     await tec.waitForURL("**/visita?talhao=**");
     const v = c.visita;
+    await tec.locator("summary", { hasText: "Mais detalhes da visita" }).click();
     await tec.fill("#objetivo", v.objetivo);
     await tec.fill("#uso_atual", v.uso);
     await tec.fill("#cultura_atual", v.cultura);
@@ -291,6 +293,7 @@ async function cadastrarCliente(tec, c, { mostrarNasa }) {
 
   await passo(tec, "Técnico", "Registra a análise de solo", "Valores do laudo do laboratório. O app interpreta pela tabela do IAC (Boletim 100) e mostra o que precisa de correção.", async () => {
     await tec.goto(`${urlTalhao}?aba=solo`);
+    await tec.locator("summary", { hasText: "Outros números do laudo" }).click();
     for (const [k, v] of Object.entries(c.solo.valores)) await tec.fill(`#f-${k}`, String(v));
     await tec.fill('input[name="laboratorio"]', c.solo.laboratorio).catch(() => {});
     await tec.getByRole("button", { name: "Salvar amostra" }).click();

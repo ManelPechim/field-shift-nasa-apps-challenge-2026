@@ -29,7 +29,7 @@ export function interpretar(val: ValoresSolo): Interpretacao {
 
   if (ph != null) {
     const i = ph <= 4.3 ? 0 : ph <= 5.0 ? 1 : ph <= 5.5 ? 2 : ph <= 6.0 ? 3 : 4;
-    ind.push({ nome: val.ph == null ? "pH (CaCl₂) estimado" : "pH (CaCl₂)", valor: fmt(ph, 1), classe: ["Acidez muito alta", "Acidez alta", "Acidez média", "Acidez baixa", "Acidez muito baixa"][i], tom: i <= 1 ? "ruim" : i === 2 ? "atencao" : "bom", explicacao: "Solo ácido prende nutrientes e pode soltar alumínio tóxico." });
+    ind.push({ nome: val.ph == null ? "Acidez (pH, estimado)" : "Acidez (pH)", valor: fmt(ph, 1), classe: ["Acidez muito alta", "Acidez alta", "Acidez média", "Acidez baixa", "Acidez muito baixa"][i], tom: i <= 1 ? "ruim" : i === 2 ? "atencao" : "bom", explicacao: "Solo ácido prende nutrientes e pode soltar alumínio tóxico." });
   }
   if (v != null) {
     const i = faixa(v, [26, 51, 71, 91]);
@@ -40,7 +40,7 @@ export function interpretar(val: ValoresSolo): Interpretacao {
       ind.push({ nome: "Fósforo (P Mehlich)", valor: `${fmt(val.p, 1)} mg/dm³`, classe: "Depende da argila", tom: "info", explicacao: "Com Mehlich-1, a faixa depende do teor de argila (Manual CQFS-RS/SC). Informe a argila para interpretar." });
     } else {
       classeP = faixa(val.p, [7, 16, 41, 81]);
-      ind.push({ nome: "Fósforo (P resina)", valor: `${fmt(val.p, 1)} mg/dm³`, classe: NB[classeP], tom: (["ruim", "atencao", "bom", "bom", "info"] as Tom[])[classeP], explicacao: "Ajuda a raiz e a formação dos grãos. Baixo pede adubação." });
+      ind.push({ nome: "Fósforo (P)", valor: `${fmt(val.p, 1)} mg/dm³`, classe: NB[classeP], tom: (["ruim", "atencao", "bom", "bom", "info"] as Tom[])[classeP], explicacao: "Ajuda a raiz e a formação dos grãos. Baixo pede adubação." });
     }
   }
   if (val.k != null) {
@@ -52,7 +52,7 @@ export function interpretar(val: ValoresSolo): Interpretacao {
   if (val.mo != null) { const i = faixa(val.mo, [26, 51]); ind.push({ nome: "Matéria orgânica (M.O.)", valor: `${fmt(val.mo, 1)} g/dm³`, classe: ["Baixa", "Média", "Alta"][i], tom: (["atencao", "bom", "bom"] as Tom[])[i], explicacao: "Guarda água e nutrientes e alimenta a vida do solo. Sobe devagar, com palhada e plantio direto." }); }
   const alToxico = m > 20;
   ind.push({ nome: "Alumínio (Al)", valor: `${fmt(val.al ?? 0, 2)} mmolc/dm³`, classe: alToxico ? "Tóxico" : "Sem toxidez", tom: alToxico ? "ruim" : "bom", explicacao: alToxico ? `Ocupa ${fmt(m, 0)}% da CTC efetiva e trava as raízes. O calcário corrige.` : "Não chega a prejudicar as raízes." });
-  ind.push({ nome: "CTC (pH 7)", valor: `${fmt(t, 1)} mmolc/dm³`, classe: "Calculada", tom: "info", explicacao: "Tamanho da “caixa” de nutrientes do solo: K + Ca + Mg + (H + Al)." });
+  ind.push({ nome: "Caixa de nutrientes (CTC)", valor: `${fmt(t, 1)} mmolc/dm³`, classe: "Calculada", tom: "info", explicacao: "Tamanho da “caixa” de nutrientes do solo: K + Ca + Mg + (H + Al)." });
 
   return { sb, ctc: t, v, ph, classeP, classeK, moBaixa: val.mo != null && val.mo < 26, alToxico, indicadores: ind };
 }
@@ -63,11 +63,11 @@ export function prontidao(rot: Rotacao, I: Interpretacao) {
   const correcoes: string[] = [];
   if (calagem.length) {
     const alvo = Math.max(...calagem.map((id) => CULTURAS[id].vIdeal));
-    correcoes.push(`Calagem para subir o V% de ${Math.round(I.v!)}% para cerca de ${alvo}% (${calagem.map((id) => nomeCultura(id).toLowerCase()).join(", ")})`);
+    correcoes.push(`Calcário para tirar a acidez: subir o V% de ${Math.round(I.v!)}% para cerca de ${alvo}%, o que ${calagem.map((id) => nomeCultura(id).toLowerCase()).join(", ")} pede${calagem.length > 1 ? "m" : ""}`);
   }
-  if (I.alToxico && !calagem.length) correcoes.push("Calcário para neutralizar o alumínio tóxico");
-  if (I.classeP != null && I.classeP <= 1) correcoes.push(`Adubação de fósforo (P ${I.classeP === 0 ? "muito baixo" : "baixo"})`);
-  if (I.classeK != null && I.classeK <= 1) correcoes.push(`Adubação de potássio (K ${I.classeK === 0 ? "muito baixo" : "baixo"})`);
+  if (I.alToxico && !calagem.length) correcoes.push("Calcário para neutralizar o alumínio, que trava as raízes");
+  if (I.classeP != null && I.classeP <= 1) correcoes.push(`Adubo com fósforo (está ${I.classeP === 0 ? "muito baixo" : "baixo"})`);
+  if (I.classeK != null && I.classeK <= 1) correcoes.push(`Adubo com potássio (está ${I.classeK === 0 ? "muito baixo" : "baixo"})`);
   const status: "pronto" | "corrigir" | "recuperar" = I.moBaixa && I.v != null && I.v < 50 ? "recuperar" : correcoes.length ? "corrigir" : "pronto";
   return { status, correcoes, nCalagem: calagem.length };
 }

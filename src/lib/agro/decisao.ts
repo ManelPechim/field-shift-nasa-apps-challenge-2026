@@ -4,12 +4,22 @@ import type { RelevoTalhao } from "@/lib/nasa/relevo";
 import type { Talhao, Visita } from "@/lib/tipos";
 import { regiaoDe } from "./culturas";
 import { CENARIOS, aplicarCenario, calcularRiscos, niveis, type Cenario } from "./riscos";
-import { avaliar, comparar, porQue, type Avaliacao, type Prioridades } from "./rotacao";
+import { avaliar, comparar, porQue, type Avaliacao, type Criterio, type Prioridades } from "./rotacao";
 
 type Busca = Record<string, string | string[] | undefined>;
 
 export const PRIORIDADES: [keyof Prioridades, string][] = [["renda", "Renda"], ["solo", "Melhorar o solo"], ["erosao", "Proteger contra erosão"], ["agua", "Economizar água"], ["forragem", "Forragem para o gado"]];
 export const PESO = ["", "pouco", "médio", "muito"];
+
+/** Cada critério em palavras simples: o nome e o que a nota mede. */
+export const CRITERIO_SIMPLES: Record<Criterio, [string, string]> = {
+  solo: ["Cuida do solo", "Palha, raízes e nitrogênio que a rotação devolve à terra."],
+  erosao: ["Segura a terra na chuva", "Quantos meses o solo fica coberto na época de chuva forte."],
+  clima: ["Aguenta o clima do lugar", "Geada, seca, calor e encharcamento nos meses de cada cultura."],
+  renda: ["Potencial de renda", "Comparação do quanto as culturas costumam render. Não é lucro em reais."],
+  agua: ["Gasta pouca água", "Quanto as culturas precisam de chuva ou irrigação."],
+  forragem: ["Dá pasto para o gado", "Culturas que podem virar alimento para os animais."],
+};
 export const LETRAS = ["A", "B", "C"];
 
 /** Cenário, prioridades e limitações vindos do formulário da aba Rotações (ou da visita, quando não informados). */

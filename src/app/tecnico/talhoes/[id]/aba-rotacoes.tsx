@@ -2,12 +2,13 @@ import Link from "next/link";
 import { CalendarioRotacao } from "@/components/graficos";
 import { LegendaEvidencia, SeloEvidencia, SelosEvidencia } from "@/components/evidencia";
 import { Selo, Vazio } from "@/components/ui";
-import { LETRAS, PESO, PRIORIDADES as PRI, analisar, buscaDosParametros, parametros, resumoDasOpcoes } from "@/lib/agro/decisao";
+import { CRITERIO_SIMPLES, LETRAS, PESO, PRIORIDADES as PRI, analisar, buscaDosParametros, parametros } from "@/lib/agro/decisao";
+import { Glossario } from "@/components/glossario";
+import { EscolherRotacao } from "./escolher";
 import { CENARIOS, type Cenario } from "@/lib/agro/riscos";
 import { CRITERIOS, beneficios, evidencias, lacunas, porQue, riscosDaRotacao } from "@/lib/agro/rotacao";
 import { tiposDaFonte } from "@/lib/evidencia";
 import { STATUS_SOLO, interpretar, prontidao } from "@/lib/agro/solo";
-import { criarPlano } from "@/app/tecnico/actions";
 import type { ClimaTalhao } from "@/lib/nasa/power";
 import type { RelevoTalhao } from "@/lib/nasa/relevo";
 import type { Amostra, Talhao, Visita } from "@/lib/tipos";
@@ -20,27 +21,32 @@ export function AbaRotacoes({ talhao, clima, relevo, visita, amostra, sp }: {
   if (!clima) return <Vazio titulo="Sem dados de clima">A comparação precisa dos dados da NASA POWER. Tente atualizar a aba Dados da NASA.</Vazio>;
   const par = parametros(sp, visita);
   const { cenario, pri, gado, irrigacao } = par;
-  const { sul, riscos, cmp, melhor } = analisar(talhao, clima, relevo, visita, par);
+  const analise = analisar(talhao, clima, relevo, visita, par);
+  const { sul, riscos, cmp, melhor } = analise;
   const I = amostra ? interpretar(amostra.valores) : null;
-  const opcoes = resumoDasOpcoes(cmp.top, cmp.atual, pri);
 
   return (
     <div className="grid gap-8">
+      <div className="grid gap-2 rounded-xl bg-sat-soft p-4 text-sm">
+        <b>Como ler esta tela</b>
+        <p><b>A</b> é o que o produtor planta hoje. <b>B</b> e <b>C</b> são as duas alternativas que mais combinam com o que ele quer. Cada opção ganha uma nota de 0 a 100 em seis pontos (solo, erosão, clima, renda, água e pasto). A nota final, <b>“combina”</b>, pesa mais os pontos que o produtor marcou como importantes.</p>
+        <p>Dá para mudar as prioridades e testar um ano mais seco ou mais chuvoso no quadro abaixo e clicar em Recalcular.</p>
+      </div>
       <form method="get" className="card grid gap-4 p-4">
         <input type="hidden" name="aba" value="rotacoes" />
         <div className="flex flex-wrap items-end gap-4">
           <div>
-            <label className="label" htmlFor="cenario">Previsão de chuva para a safra</label>
+            <label className="label" htmlFor="cenario">E se a safra vier…</label>
             <select className="input w-auto" id="cenario" name="cenario" defaultValue={cenario}>
-              {(Object.keys(CENARIOS) as Cenario[]).map((c) => <option key={c} value={c}>{CENARIOS[c].nome} ({CENARIOS[c].enso})</option>)}
+              {(Object.keys(CENARIOS) as Cenario[]).map((c) => <option key={c} value={c}>{c === "normal" ? "Normal" : c === "seco" ? "Mais seca (La Niña)" : "Mais chuvosa (El Niño)"}</option>)}
             </select>
           </div>
           <label className="flex items-center gap-2"><input type="checkbox" name="gado" value="1" defaultChecked={gado} /> Tem gado</label>
           <label className="flex items-center gap-2"><input type="checkbox" name="irrigacao" value="1" defaultChecked={irrigacao} /> Tem irrigação</label>
         </div>
-        <p className="-mt-2 text-xs text-muted"><SeloEvidencia tipo="hipotese" /> {sul ? "No Sul, El Niño costuma trazer chuva acima da média e La Niña, estiagem." : "No Cerrado, El Niño e La Niña mudam pouco a chuva."} Consulte o boletim ENSO da NOAA e a previsão do INMET.</p>
+        <p className="-mt-2 text-xs text-muted"><SeloEvidencia tipo="hipotese" /> É um teste de “e se”, não previsão. {sul ? "No Sul, El Niño costuma trazer mais chuva e La Niña, seca." : "No Cerrado, El Niño e La Niña mudam pouco a chuva."} A previsão de verdade sai no INMET e na NOAA.</p>
         <fieldset className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          <legend className="label">Prioridades do produtor</legend>
+          <legend className="label">O que é mais importante para o produtor</legend>
           {PRI.map(([k, n]) => (
             <label key={k} className="flex items-center justify-between gap-2 rounded-lg bg-surface-2 px-3 py-2 text-sm">
               {n}
@@ -53,12 +59,12 @@ export function AbaRotacoes({ talhao, clima, relevo, visita, amostra, sp }: {
         <div className="flex flex-wrap items-center gap-3">
           <button className="btn-ghost btn-sm">Recalcular</button>
           <Link href={`/tecnico/talhoes/${talhao.id}/relatorio?${buscaDosParametros(par)}`} className="btn btn-sm no-underline">Relatório de decisão</Link>
-          <span className="text-xs text-muted">Uma página com as três opções nos três cenários, o que falta saber e as fontes.</span>
+          <span className="text-xs text-muted">Uma página para levar ao produtor: as três opções em ano normal, seco e chuvoso, o que falta saber e as fontes.</span>
         </div>
       </form>
 
       <details className="card p-4 text-sm">
-        <summary className="cursor-pointer font-semibold">O que cada selo quer dizer</summary>
+        <summary className="cursor-pointer font-semibold">O que cada selo colorido quer dizer (de onde vem cada informação)</summary>
         <div className="mt-3"><LegendaEvidencia /></div>
       </details>
 
@@ -73,11 +79,11 @@ export function AbaRotacoes({ talhao, clima, relevo, visita, amostra, sp }: {
               </tr>
             </thead>
             <tbody>
-              {CRITERIOS.map(([k, n]) => {
+              {CRITERIOS.map(([k]) => {
                 const mx = Math.max(...cmp.top.map((a) => a[k]));
                 return (
                   <tr key={k}>
-                    <th scope="row" className="w-[34%] border-b border-line px-2 py-1.5 text-left font-semibold">{n}<small className="block font-normal text-muted">peso: {k === "clima" ? "médio (fixo)" : PESO[pri[k]]}</small></th>
+                    <th scope="row" className="w-[34%] border-b border-line px-2 py-1.5 text-left font-semibold">{CRITERIO_SIMPLES[k][0]}<small className="block font-normal text-muted">{CRITERIO_SIMPLES[k][1]} Importância: {k === "clima" ? "média (fixa)" : PESO[pri[k]]}.</small></th>
                     {cmp.top.map((a) => (
                       <td key={a.rotacao.id} className="border-b border-line px-2 py-1.5 tabular-nums">
                         <div className="mb-1 h-1.5 overflow-hidden rounded bg-surface-2"><i className={`block h-full rounded ${a[k] === mx ? "bg-brand" : "bg-muted"}`} style={{ width: `${Math.round(a[k])}%` }} /></div>
@@ -88,13 +94,13 @@ export function AbaRotacoes({ talhao, clima, relevo, visita, amostra, sp }: {
                 );
               })}
               <tr>
-                <th scope="row" className="px-2 pt-3 text-left font-semibold">Combina com as prioridades</th>
+                <th scope="row" className="px-2 pt-3 text-left font-semibold">Nota final: combina com o produtor</th>
                 {cmp.top.map((a) => <td key={a.rotacao.id} className={`px-2 pt-3 font-display text-2xl font-extrabold ${a === melhor ? "text-brand" : ""}`}>{Math.round(a.combina)}</td>)}
               </tr>
             </tbody>
           </table>
         </div>
-        <p className="mt-1 text-xs text-muted">Notas de 0 a 100. As regras estão no código e podem ser conferidas; a base de culturas é simplificada e precisa de validação agronômica.</p>
+        <p className="mt-1 text-xs text-muted">Notas de 0 a 100, comparando as opções entre si: não é produtividade nem lucro. A nota mais alta de cada linha está em verde. As regras são simplificadas e precisam de validação agronômica.</p>
       </section>
 
       <section className="grid gap-4">
@@ -113,7 +119,7 @@ export function AbaRotacoes({ talhao, clima, relevo, visita, amostra, sp }: {
               <p><b>Por que:</b> {porQue(a, cmp.atual, pri)} <SeloEvidencia tipo="regra" /></p>
               {pr && <p className="flex flex-wrap items-center gap-2 text-sm"><Selo tom={STATUS_SOLO[pr.status].tom}>{STATUS_SOLO[pr.status].nome}</Selo>{pr.correcoes.join(" · ")} <SeloEvidencia tipo="local" /></p>}
               <details className="border-t border-line pt-2">
-                <summary className="cursor-pointer font-semibold text-brand">Evidências, benefícios, riscos e lacunas</summary>
+                <summary className="cursor-pointer font-semibold text-brand">Detalhes: provas, benefícios, riscos e o que falta saber</summary>
                 <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
                   <div><h3 className="eyebrow mb-1">Evidências</h3><ul className="list-disc pl-5">{evidencias(a, riscos).map((e) => <li key={e.texto}>{e.texto} <SelosEvidencia tipos={tiposDaFonte(e.fonte)} /> <span className="fonte">{e.fonte}</span></li>)}</ul></div>
                   <div><h3 className="eyebrow mb-1">Benefícios <SeloEvidencia tipo="regra" /></h3><ul className="list-disc pl-5">{beneficios(a).map((b) => <li key={b}>{b}</li>)}</ul></div>
@@ -121,15 +127,9 @@ export function AbaRotacoes({ talhao, clima, relevo, visita, amostra, sp }: {
                   <div><h3 className="eyebrow mb-1">O que o app não sabe</h3><ul className="list-disc pl-5">{lacunas(!!amostra).map((l) => <li key={l}>{l}</li>)}</ul></div>
                 </div>
               </details>
-              <form action={criarPlano} className="flex flex-wrap items-end gap-3 border-t border-line pt-3">
-                <input type="hidden" name="talhao_id" value={talhao.id} />
-                <input type="hidden" name="rotacao_id" value={a.rotacao.id} />
-                <input type="hidden" name="rotacao_nome" value={a.nome} />
-                <input type="hidden" name="correcoes" value={JSON.stringify(pr?.correcoes ?? [])} />
-                <input type="hidden" name="dados" value={JSON.stringify({ cenario, prioridades: pri, gado, irrigacao, riscos, notas: Object.fromEntries(CRITERIOS.map(([k]) => [k, Math.round(a[k])])), combina: Math.round(a.combina), atual: cmp.atual.nome, notas_atual: Object.fromEntries(CRITERIOS.map(([k]) => [k, Math.round(cmp.atual[k])])), opcoes, escolhida: LETRAS[i] })} />
-                <div><label className="label" htmlFor={`safra-${i}`}>Safra</label><input className="input w-28" id={`safra-${i}`} name="safra" defaultValue="2026/27" /></div>
-                <button className="btn btn-sm">{i === 0 ? "Manter a atual e montar o plano" : "Escolher esta e montar o plano"}</button>
-              </form>
+              <div className="border-t border-line pt-3">
+                <EscolherRotacao talhao={talhao} a={a} i={i} correcoes={pr?.correcoes ?? []} par={par} analise={analise} rotulo={i === 0 ? "Manter a atual e montar o plano" : "Escolher esta e montar o plano"} />
+              </div>
             </article>
           );
         })}
@@ -145,7 +145,8 @@ export function AbaRotacoes({ talhao, clima, relevo, visita, amostra, sp }: {
           </ul>
         </section>
       )}
-      <p className="rounded-xl bg-warn-soft p-3 text-sm text-warn">A comparação apoia a decisão do técnico. Confirme a janela de plantio no ZARC do município, o mercado local e o histórico de pragas antes de recomendar.</p>
+      <p className="rounded-xl bg-warn-soft p-3 text-sm text-warn">A comparação apoia a decisão do técnico. Antes de recomendar, confirme a data de plantio no ZARC do município, se há comprador para as culturas e o histórico de pragas.</p>
+      <Glossario termos={["Rotação", "Planta de cobertura", "El Niño / La Niña", "INMET", "NOAA", "ZARC"]} />
     </div>
   );
 }

@@ -4,10 +4,13 @@ import { useState } from "react";
 import { AvisoIA, SeloIA } from "@/components/aviso-ia";
 import type { ValoresSolo } from "@/lib/tipos";
 
+// Sigla do laudo seguida do que ela é; os números menos usados ficam em "Outros números"
 const CAMPOS: [keyof ValoresSolo, string, string][] = [
-  ["ph", "pH (CaCl₂)", ""], ["ph_agua", "pH (água)", ""], ["smp", "Índice SMP", ""], ["p", "P", "mg/dm³"],
-  ["k", "K", "mmolc/dm³"], ["ca", "Ca", "mmolc/dm³"], ["mg", "Mg", "mmolc/dm³"], ["al", "Al", "mmolc/dm³"],
-  ["hal", "H + Al", "mmolc/dm³"], ["mo", "M.O.", "g/dm³"], ["argila", "Argila", "%"],
+  ["ph", "pH em CaCl₂ (acidez)", ""], ["p", "P (fósforo)", "mg/dm³"], ["k", "K (potássio)", "mmolc/dm³"], ["ca", "Ca (cálcio)", "mmolc/dm³"],
+  ["mg", "Mg (magnésio)", "mmolc/dm³"], ["al", "Al (alumínio)", "mmolc/dm³"], ["hal", "H + Al (acidez total)", "mmolc/dm³"], ["mo", "M.O. (matéria orgânica)", "g/dm³"],
+];
+const CAMPOS_EXTRAS: [keyof ValoresSolo, string, string][] = [
+  ["argila", "Argila", "%"], ["ph_agua", "pH em água", ""], ["smp", "Índice SMP (para o calcário)", ""],
 ];
 
 export function NovaAmostra({ talhaoId, acao }: { talhaoId: string; acao: (f: FormData) => Promise<void> }) {
@@ -37,6 +40,14 @@ export function NovaAmostra({ talhaoId, acao }: { talhaoId: string; acao: (f: Fo
     } finally { setEnviando(false); }
   }
 
+  const campo = (k: keyof ValoresSolo, n: string, u: string) => (
+    <div key={k}>
+      <label className="label" htmlFor={`f-${k}`}>{n} {u && <small className="font-mono text-[0.68rem] font-normal text-muted">{u}</small>}</label>
+      <input className="input" id={`f-${k}`} name={k} type="number" step="any" inputMode="decimal"
+        value={(valores[k] as number | null | undefined) ?? ""} onChange={(e) => setValores({ ...valores, [k]: e.target.value === "" ? null : Number(e.target.value) })} />
+    </div>
+  );
+
   const sb = (valores.k ?? 0) + (valores.ca ?? 0) + (valores.mg ?? 0);
   const ctc = sb + (valores.hal ?? 0);
   const v = ctc > 0 ? (100 * sb) / ctc : null;
@@ -45,7 +56,7 @@ export function NovaAmostra({ talhaoId, acao }: { talhaoId: string; acao: (f: Fo
     <div className="card grid gap-4 p-4">
       <div>
         <span className="eyebrow">Nova amostra</span>
-        <p className="text-sm text-muted">Anexe a foto ou o PDF do laudo do laboratório e digite os valores abaixo.</p>
+        <p className="text-sm text-muted">Anexe a foto ou o PDF do laudo e digite os números principais. O app traduz cada um e diz o que precisa de correção.</p>
       </div>
       <label className="flex cursor-pointer flex-col items-center gap-1 rounded-xl border-2 border-dashed border-line p-5 text-center hover:border-brand hover:bg-brand-soft">
         <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment" className="sr-only" disabled={enviando}
@@ -71,28 +82,28 @@ export function NovaAmostra({ talhaoId, acao }: { talhaoId: string; acao: (f: Fo
           <div><label className="label" htmlFor="data_coleta">Data da coleta</label><input className="input" type="date" id="data_coleta" name="data_coleta" value={meta.data} onChange={(e) => setMeta({ ...meta, data: e.target.value })} /></div>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {CAMPOS.map(([k, n, u]) => (
-            <div key={k}>
-              <label className="label" htmlFor={`f-${k}`}>{n} {u && <small className="font-mono text-[0.68rem] font-normal text-muted">{u}</small>}</label>
-              <input className="input" id={`f-${k}`} name={k} type="number" step="any" inputMode="decimal"
-                value={(valores[k] as number | null | undefined) ?? ""} onChange={(e) => setValores({ ...valores, [k]: e.target.value === "" ? null : Number(e.target.value) })} />
-            </div>
-          ))}
-          <div>
-            <label className="label" htmlFor="p_metodo">Método do P</label>
-            <select className="input" id="p_metodo" name="p_metodo" value={valores.p_metodo ?? "resina"} onChange={(e) => setValores({ ...valores, p_metodo: e.target.value as "resina" | "mehlich" })}>
-              <option value="resina">Resina</option><option value="mehlich">Mehlich-1</option>
-            </select>
-          </div>
+          {CAMPOS.map(([k, n, u]) => campo(k, n, u))}
         </div>
+        <details className="rounded-lg border border-line p-3">
+          <summary className="cursor-pointer font-semibold">Outros números do laudo (opcional)</summary>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {CAMPOS_EXTRAS.map(([k, n, u]) => campo(k, n, u))}
+            <div>
+              <label className="label" htmlFor="p_metodo">Como o fósforo foi medido</label>
+              <select className="input" id="p_metodo" name="p_metodo" value={valores.p_metodo ?? "resina"} onChange={(e) => setValores({ ...valores, p_metodo: e.target.value as "resina" | "mehlich" })}>
+                <option value="resina">Resina</option><option value="mehlich">Mehlich-1</option>
+              </select>
+            </div>
+          </div>
+        </details>
         <dl className="grid grid-cols-3 gap-2">
-          <div className="rounded-lg bg-surface-2 p-2"><dt className="text-xs text-muted">Soma de bases</dt><dd className="font-display font-bold">{sb.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</dd></div>
-          <div className="rounded-lg bg-surface-2 p-2"><dt className="text-xs text-muted">CTC pH 7</dt><dd className="font-display font-bold">{ctc.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</dd></div>
-          <div className="rounded-lg bg-surface-2 p-2"><dt className="text-xs text-muted">V%</dt><dd className="font-display font-bold">{v == null ? "—" : `${Math.round(v)}%`}</dd></div>
+          <div className="rounded-lg bg-surface-2 p-2"><dt className="text-xs text-muted">Nutrientes (K + Ca + Mg)</dt><dd className="font-display font-bold">{sb.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</dd></div>
+          <div className="rounded-lg bg-surface-2 p-2"><dt className="text-xs text-muted">Tamanho da “caixa” de nutrientes (CTC)</dt><dd className="font-display font-bold">{ctc.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}</dd></div>
+          <div className="rounded-lg bg-surface-2 p-2"><dt className="text-xs text-muted">Quanto da caixa está cheia (V%)</dt><dd className="font-display font-bold">{v == null ? "—" : `${Math.round(v)}%`}</dd></div>
         </dl>
         <details className="rounded-lg border border-line p-3">
-          <summary className="cursor-pointer font-semibold">Análise biológica (BioAS), se houver</summary>
-          <p className="mt-2 text-sm text-muted">Enzimas em mg de p-nitrofenol por kg de solo por hora. COT em g/kg; se ficar vazio, o app estima pela M.O. (M.O. ÷ 1,724).</p>
+          <summary className="cursor-pointer font-semibold">Análise biológica, a “vida do solo” (BioAS), se houver</summary>
+          <p className="mt-2 text-sm text-muted">Copie os três números do laudo biológico. Se o carbono (COT) ficar vazio, o app calcula pela matéria orgânica.</p>
           <div className="mt-2 grid grid-cols-3 gap-3">
             <div><label className="label" htmlFor="beta">β-glicosidase</label><input className="input" id="beta" name="beta" type="number" step="any" /></div>
             <div><label className="label" htmlFor="aril">Arilsulfatase</label><input className="input" id="aril" name="aril" type="number" step="any" /></div>

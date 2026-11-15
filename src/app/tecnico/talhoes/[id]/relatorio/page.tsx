@@ -8,7 +8,8 @@ import { Pagina, dataBR, num } from "@/components/ui";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { dadosNasa } from "@/lib/dados";
 import { MESES_NOME, nomeCultura, nomeRotacao, rotacaoPorId } from "@/lib/agro/culturas";
-import { LETRAS, PESO, PRIORIDADES, analisar, parametros } from "@/lib/agro/decisao";
+import { CRITERIO_SIMPLES, LETRAS, PESO, PRIORIDADES, analisar, parametros } from "@/lib/agro/decisao";
+import { Glossario } from "@/components/glossario";
 import { CENARIOS, NIVEL, NOME_RISCO, type ChaveRisco } from "@/lib/agro/riscos";
 import { CRITERIOS, beneficios, evidencias, lacunas, porQue, riscosDaRotacao } from "@/lib/agro/rotacao";
 import { QUADRANTES, aeem, cotDaMO, diagnostico4QM, interpretar, prontidao } from "@/lib/agro/solo";
@@ -117,13 +118,21 @@ export default async function RelatorioDeDecisao(props: PageProps<"/tecnico/talh
             <b>Objetivo:</b> comparar a rotação atual com duas alternativas, nas condições deste talhão, e dizer o que os dados permitem afirmar e o que ainda falta verificar.
             É apoio à decisão: não substitui o técnico nem o conhecimento do produtor, e não estima produtividade nem lucro.
           </p>
+          <section className="grid gap-2 rounded-2xl border-2 border-brand p-4">
+            <span className="eyebrow">Em resumo</span>
+            <p className="font-display text-xl leading-tight font-bold">
+              {melhor.combina - cmp.atual.combina >= 4 ? <>Recomendação: trocar {cmp.atual.nome} por <span className="text-brand">{melhor.nome}</span>.</> : <>Recomendação: manter <span className="text-brand">{cmp.atual.nome}</span>.</>}
+            </p>
+            <p>{porQue(melhor, cmp.atual, par.pri)} Nota “combina com o produtor”: {Math.round(melhor.combina)} contra {Math.round(cmp.atual.combina)} da rotação de hoje (0 a 100).</p>
+            {correcoes.length > 0 && <p className="text-sm"><b>Antes de plantar:</b> {correcoes.join("; ")}.</p>}
+          </section>
           <div className="card p-3"><LegendaEvidencia /></div>
         </header>
 
-        <Secao n="01" titulo="Evidência climática e de relevo" sub={`NASA POWER no centro do talhão (${num(t.centroide_lat, 4)}, ${num(t.centroide_lon, 4)}; grade de cerca de 50 km), ${clima.periodo}, consultado em ${dataBR(clima.atualizado_em)}.`}>
+        <Secao n="01" titulo="O clima e o terreno, pelos dados da NASA" sub={`Média de ${clima.periodo} no centro do talhão. Cada ponto da NASA cobre uma área de cerca de 50 km. Consultado em ${dataBR(clima.atualizado_em)}.`}>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[520px] border-collapse text-sm">
-              <thead><tr className="text-left font-mono text-xs uppercase text-muted"><th className="border-b border-line px-2 py-1.5 font-medium">Indicador</th><th className="border-b border-line px-2 py-1.5 font-medium">Valor</th><th className="border-b border-line px-2 py-1.5 font-medium">Variável e unidade</th></tr></thead>
+            <table className="w-full min-w-[420px] border-collapse text-sm">
+              <thead><tr className="text-left font-mono text-xs uppercase text-muted"><th className="border-b border-line px-2 py-1.5 font-medium">O que foi medido</th><th className="border-b border-line px-2 py-1.5 font-medium">Valor</th></tr></thead>
               <tbody>
                 {[
                   ["Chuva no ano", `${num(clima.chuva_anual_mm)} mm`, "PRECTOTCORR, soma das médias mensais"],
@@ -136,11 +145,11 @@ export default async function RelatorioDeDecisao(props: PageProps<"/tecnico/talh
                   ["Dias com máxima acima de 35 °C", `${num(soma(clima.calor_dias), 1)} por ano`, "T2M_MAX diária"],
                   ...clima.chuva_decadas.map((d) => [`Chuva média ${d.de}`, `${num(d.mm_ano)} mm por ano`, "PRECTOTCORR"]),
                   ...(relevo ? [
-                    ["Declividade média (máxima de 90% da área)", `${num(relevo.declividade_media, 1)}% (${num(relevo.declividade_p90, 1)}%), ${relevo.classe.toLowerCase()}`, `SRTM, pixel de ${num(relevo.pixel_m)} m, ${relevo.pontos} pontos`],
+                    ["Inclinação média do terreno (nos 10% mais inclinados)", `${num(relevo.declividade_media, 1)}% (${num(relevo.declividade_p90, 1)}%), ${relevo.classe.toLowerCase()}`, `SRTM, pixel de ${num(relevo.pixel_m)} m, ${relevo.pontos} pontos`],
                     ["Altitude", `${num(relevo.altitude_min)} a ${num(relevo.altitude_max)} m`, "SRTM"],
                   ] : []),
-                ].map(([a, b, c]) => (
-                  <tr key={a}><th scope="row" className="border-b border-line px-2 py-1.5 text-left font-semibold">{a}</th><td className="border-b border-line px-2 py-1.5 tabular-nums">{b} <SeloEvidencia tipo="nasa" /></td><td className="border-b border-line px-2 py-1.5 text-xs text-muted">{c}</td></tr>
+                ].map(([a, b]) => (
+                  <tr key={a}><th scope="row" className="border-b border-line px-2 py-1.5 text-left font-semibold">{a}</th><td className="border-b border-line px-2 py-1.5 tabular-nums">{b} <SeloEvidencia tipo="nasa" /></td></tr>
                 ))}
               </tbody>
             </table>
@@ -153,7 +162,7 @@ export default async function RelatorioDeDecisao(props: PageProps<"/tecnico/talh
           </ul>
         </Secao>
 
-        <Secao n="02" titulo="Perfil agrícola" sub="O que se sabe do talhão e do produtor. Nada aqui foi preenchido por suposição.">
+        <Secao n="02" titulo="O que se sabe do talhão" sub="O que se sabe do talhão e do produtor. Nada aqui foi preenchido por suposição.">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="grid content-start gap-1.5 text-sm">
               <h3 className="font-display font-bold">Manejo e visita</h3>
@@ -200,7 +209,7 @@ export default async function RelatorioDeDecisao(props: PageProps<"/tecnico/talh
           )}
         </Secao>
 
-        <Secao n="03" titulo="Alternativas" sub={`A rotação atual e as duas alternativas que mais combinam com as prioridades, no cenário ${CENARIOS[par.cenario].nome.toLowerCase()}. Notas de 0 a 100, relativas entre si: não são produtividade.`}>
+        <Secao n="03" titulo="As três opções comparadas" sub={`A rotação atual e as duas alternativas que mais combinam com as prioridades, no cenário ${CENARIOS[par.cenario].nome.toLowerCase()}. Notas de 0 a 100, relativas entre si: não são produtividade.`}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] border-collapse text-sm">
               <thead>
@@ -211,11 +220,11 @@ export default async function RelatorioDeDecisao(props: PageProps<"/tecnico/talh
               </thead>
               <tbody>
                 <tr><th scope="row" className="border-b border-line px-2 py-1.5 text-left font-semibold">Rotação</th>{cmp.top.map((a) => <td key={a.rotacao.id} className="border-b border-line px-2 py-1.5">{a.nome}</td>)}</tr>
-                {CRITERIOS.map(([k, n]) => {
+                {CRITERIOS.map(([k]) => {
                   const mx = Math.max(...cmp.top.map((a) => a[k]));
                   return (
                     <tr key={k}>
-                      <th scope="row" className="border-b border-line px-2 py-1.5 text-left font-semibold">{n}<small className="block font-normal text-muted">peso {k === "clima" ? "médio (fixo)" : PESO[par.pri[k]]}</small></th>
+                      <th scope="row" className="border-b border-line px-2 py-1.5 text-left font-semibold">{CRITERIO_SIMPLES[k][0]}<small className="block font-normal text-muted">importância {k === "clima" ? "média (fixa)" : PESO[par.pri[k]]}</small></th>
                       {cmp.top.map((a) => <td key={a.rotacao.id} className={`border-b border-line px-2 py-1.5 tabular-nums ${a[k] === mx ? "font-bold text-brand" : ""}`}>{Math.round(a[k])}</td>)}
                     </tr>
                   );
@@ -285,7 +294,8 @@ export default async function RelatorioDeDecisao(props: PageProps<"/tecnico/talh
           </div>
         </Secao>
 
-        <Secao n="06" titulo="Fontes e método">
+        <Secao n="06" titulo="Fontes e método" sub="Para quem quer conferir as contas.">
+          <Glossario titulo="Siglas e termos deste relatório" termos={["NASA POWER", "SRTM", "Declividade", "Rotação", "Planta de cobertura", "El Niño / La Niña", "ZARC", "pH", "V%", "CTC", "SMP", "COT", "BioAS"]} />
           <ul className="grid gap-1.5 text-sm">
             <li><b>NASA POWER</b> (power.larc.nasa.gov), API diária, parâmetros PRECTOTCORR, T2M_MIN, T2M_MAX, T2M e RH2M, {clima.periodo}. Grade de cerca de 0,5°: vale para a região, não para pontos dentro do talhão.</li>
             {relevo && <li><b>SRTM</b> (NASA), lido pelo AWS Terrain Tiles, pixel de {num(relevo.pixel_m)} m, {relevo.pontos} pontos dentro do contorno; classes de declividade da Embrapa.</li>}
