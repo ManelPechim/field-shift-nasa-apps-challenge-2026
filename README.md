@@ -8,6 +8,25 @@ Terrana helps an agricultural technician choose, together with each farmer, the 
 
 The app interface is in Brazilian Portuguese, because its users are Brazilian technicians and farmers.
 
+## Try it live
+
+**App:** https://field-shift-nasa-terrana-26.vercel.app
+
+No sign-up needed. Use the example accounts, already filled with real NASA data for fields in Cruz Alta (RS):
+
+| Side | Login | Password |
+|---|---|---|
+| Technician | `exemplo.tecnico@field.test` | `exemplo-2026` |
+| Farmer | `exemplo.produtor1@field.test` | `lavoura-2026` |
+
+**What to open:**
+
+- **Technician:** Joaquim Pereira → Sítio Boa Esperança → Talhão da coxilha.
+  - *Resumo e recomendação* shows the ready analysis.
+  - *Comparar opções* shows the three rotations. Set "E se a safra vier…" to *Mais seca (La Niña)* and click *Recalcular*.
+  - The link "Volta no tempo" there opens the 2021/22 retrospective test.
+- **Farmer:** open the plan to see what the farmer receives on the phone.
+
 ## Why
 
 - In the 2021/22 season, NOAA issued a La Niña advisory in October, and La Niña usually brings drought to southern Brazil. Rio Grande do Sul harvested less than half of the soybeans it expected (Emater/RS).
