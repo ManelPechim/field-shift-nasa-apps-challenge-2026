@@ -101,7 +101,7 @@ export function AbaDados({ talhao, clima, relevo, erros, visita }: { talhao: Tal
       <section>
         <h2 className="h2 mb-1">Imagens de satélite</h2>
         <p className="mb-3 text-sm text-muted">Escolha uma camada da NASA para ver vegetação (NDVI), umidade do solo (SMAP) ou a imagem HLS de 30 m numa data.</p>
-        <Mapa talhoes={[{ id: talhao.id, nome: talhao.nome, geojson: talhao.geojson }]} camadaInicial="ndvi" altura="h-[380px]" />
+        <Mapa key={`${talhao.area_ha}:${talhao.centroide_lat}:${talhao.cor}`} talhoes={[{ id: talhao.id, nome: talhao.nome, geojson: talhao.geojson, cor: talhao.cor }]} camadaInicial="ndvi" altura="h-[380px]" />
       </section>
       <p className="text-sm"><Link href={`/tecnico/talhoes/${talhao.id}?aba=dados&atualizar=1`}>Atualizar dados da NASA agora</Link></p>
     </div>

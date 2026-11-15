@@ -4,7 +4,7 @@ import { Pagina, num } from "@/components/ui";
 import { Trilha } from "@/components/trilha";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { dadosNasa } from "@/lib/dados";
-import { nomeRotacao, rotacaoPorId } from "@/lib/agro/culturas";
+import { ROTACOES, nomeRotacao, regiaoDe, rotacaoPorId } from "@/lib/agro/culturas";
 import type { Amostra, Ocorrencia, Plano, Propriedade, Talhao, Tarefa, Visita } from "@/lib/tipos";
 import { AbaDados } from "./aba-dados";
 import { AbaSolo } from "./aba-solo";
@@ -37,7 +37,7 @@ export default async function PaginaTalhao(props: PageProps<"/tecnico/talhoes/[i
     supabase.from("planos").select("*").eq("talhao_id", t.id).order("criado_em", { ascending: false }).returns<Plano[]>(),
     supabase.from("tarefas").select("*").eq("talhao_id", t.id).order("criado_em").returns<Tarefa[]>(),
     supabase.from("ocorrencias").select("*").eq("talhao_id", t.id).order("criado_em", { ascending: false }).returns<Ocorrencia[]>(),
-    supabase.from("talhoes").select("cor").eq("propriedade_id", t.propriedade_id).neq("id", t.id).returns<{ cor: string }[]>(),
+    supabase.from("talhoes").select("id, nome, geojson, cor").eq("propriedade_id", t.propriedade_id).neq("id", t.id).order("criado_em").returns<Pick<Talhao, "id" | "nome" | "geojson" | "cor">[]>(),
   ]);
   const visita = visitas?.find((v) => v.talhao_id === t.id) ?? visitas?.[0] ?? null;
   const precisaNasa = aba === "dados" || aba === "rotacoes";
@@ -54,10 +54,16 @@ export default async function PaginaTalhao(props: PageProps<"/tecnico/talhoes/[i
         { rotulo: t.nome, tipo: "Talhão" },
       ]} />
       <div className="mt-2 mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <CabecalhoDoTalhao id={t.id} nome={t.nome} cor={t.cor} usadas={(vizinhos ?? []).map((v) => v.cor.toLowerCase())}
-            detalhes={<span className="eyebrow">{num(t.area_ha, 1)} ha · {num(t.centroide_lat, 4)}, {num(t.centroide_lon, 4)}</span>} />
-          <p className="text-muted">Hoje: {rotAtual ? nomeRotacao(rotAtual) : "rotação não informada"}</p>
+        <div className="min-w-0 flex-1">
+          <CabecalhoDoTalhao
+            dados={{
+              id: t.id, nome: t.nome, cor: t.cor, rotacaoAtual: t.rotacao_atual, areaHa: t.area_ha, geojson: t.geojson,
+              vizinhos: vizinhos ?? [], limite: prop?.limite ?? null, ponto: [prop?.lon ?? t.centroide_lon ?? 0, prop?.lat ?? t.centroide_lat ?? 0],
+              rotacoes: ROTACOES.filter((r) => r.atual && r.regiao === regiaoDe(t.centroide_lat ?? prop?.lat ?? 0)).map((r) => ({ id: r.id, nome: nomeRotacao(r) })),
+              vinculos: { amostras: amostras?.length ?? 0, planos: planos?.length ?? 0, tarefas: tarefas?.length ?? 0, relatos: ocorrencias?.length ?? 0 },
+            }}
+            detalhes={<span className="eyebrow">{num(t.area_ha, 1)} ha · {num(t.centroide_lat, 4)}, {num(t.centroide_lon, 4)}</span>}
+            rotacaoTexto={rotAtual ? nomeRotacao(rotAtual) : "rotação não informada"} />
         </div>
         <Link href={`/tecnico/propriedades/${t.propriedade_id}/visita?talhao=${t.id}`} className="btn-ghost btn-sm">Registrar visita</Link>
       </div>

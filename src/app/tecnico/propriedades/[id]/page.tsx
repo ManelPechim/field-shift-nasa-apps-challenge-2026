@@ -14,6 +14,7 @@ import { TalhoesDaPropriedade } from "./talhoes-da-propriedade";
 
 export default async function PaginaPropriedade(props: PageProps<"/tecnico/propriedades/[id]">) {
   const { id } = await props.params;
+  const { excluido } = await props.searchParams;
   const { supabase } = await exigirPerfil("tecnico");
   const [{ data: p }, { data: talhoes }, { data: visitas }, { data: relatos }] = await Promise.all([
     supabase.from("propriedades").select("*, produtores(id, nome)").eq("id", id).maybeSingle<Propriedade & { produtores: { id: string; nome: string } }>(),
@@ -35,6 +36,8 @@ export default async function PaginaPropriedade(props: PageProps<"/tecnico/propr
         { rotulo: p.produtores.nome, href: `/tecnico/produtores/${p.produtores.id}` },
         { rotulo: p.nome, tipo: "Propriedade" },
       ]} />
+
+      {typeof excluido === "string" && <p role="status" className="mb-4 rounded-xl bg-ok-soft p-3 text-ok"><b>{excluido}</b> foi excluído.</p>}
 
       <UnidadeDeArea>
         <header className="card mb-10 grid gap-5 p-5">

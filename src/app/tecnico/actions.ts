@@ -155,12 +155,34 @@ export async function editarTalhao(_: EstadoEdicaoTalhao, form: FormData): Promi
   const cor = String(form.get("cor") ?? "").toLowerCase();
   if (!nome) return { erro: "Dê um nome ao talhão." };
   if (!/^#[0-9a-f]{6}$/.test(cor)) return { erro: "Escolha uma cor." };
-  const { data, error } = await supabase.from("talhoes").update({ nome, cor }).eq("id", id).select("propriedade_id").maybeSingle();
+  const mudancas: Record<string, unknown> = { nome, cor, rotacao_atual: txt(form, "rotacao_atual") };
+  // Contorno novo: recalcula área e centro (o clima da NASA é buscado no centro, o relevo no contorno)
+  const geojson = JSON.parse(String(form.get("geojson") || "null")) as Polygon | null;
+  if (geojson) {
+    if (geojson.type !== "Polygon" || geojson.coordinates[0].length < 4) return { erro: "O contorno precisa de pelo menos 3 cantos." };
+    const [lon, lat] = centroid(geojson).geometry.coordinates;
+    Object.assign(mudancas, { geojson, area_ha: Math.round((area(geojson) / 10000) * 100) / 100, centroide_lat: lat, centroide_lon: lon });
+  }
+  const { data, error } = await supabase.from("talhoes").update(mudancas).eq("id", id).select("propriedade_id").maybeSingle();
   if (error) return { erro: `Não foi possível salvar: ${error.message}` };
   if (!data) return { erro: "Talhão não encontrado." };
+  // Envelhece o cache da NASA para recalcular relevo e clima na próxima abertura
+  if (geojson) await supabase.from("dados_nasa").update({ atualizado_em: new Date(0).toISOString() }).eq("talhao_id", id);
   revalidatePath(`/tecnico/talhoes/${id}`);
   revalidatePath(`/tecnico/propriedades/${data.propriedade_id}`);
   return { ok: true };
+}
+
+export async function excluirTalhao(form: FormData) {
+  const { supabase } = await exigirPerfil("tecnico");
+  const id = String(form.get("talhao_id"));
+  const { data: t } = await supabase.from("talhoes").select("nome, propriedade_id").eq("id", id).maybeSingle();
+  if (!t) throw new Error("Talhão não encontrado.");
+  // Análises, planos, tarefas, relatos e dados da NASA saem junto (on delete cascade); visitas ficam para a propriedade
+  const { error } = await supabase.from("talhoes").delete().eq("id", id);
+  if (error) throw new Error(`Não foi possível excluir: ${error.message}`);
+  revalidatePath(`/tecnico/propriedades/${t.propriedade_id}`);
+  redirect(`/tecnico/propriedades/${t.propriedade_id}?excluido=${encodeURIComponent(t.nome)}`);
 }
 
 export async function registrarVisita(form: FormData) {
