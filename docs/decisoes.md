@@ -82,4 +82,4 @@ A validação contra o texto do desafio 6 e o guia de mentoria mostrou que o nú
 - As opções comparadas na tela do plano do produtor.
 - O critério renomeado para "Potencial de renda (índice)".
 
-**Enquadramento:** a ferramenta é usada pelo técnico junto com o agricultor (no Sul, 48,6% dos estabelecimentos recebem orientação técnica; no Brasil, cerca de 20%, Censo Agro 2017). O uso pelo agricultor sozinho é uma opção apresentada.
+**Enquadramento:** a ferramenta é usada pelo técnico junto com o agricultor (no Sul, 48,6% dos estabelecimentos recebem orientação técnica; no Brasil, cerca de 20%, Censo Agro 2017). O técnico no meio é necessário: decidir a rotação depende de quem conhece a terra e assina a recomendação (avaliação de um especialista em agronomia, 15/11/2026). Um modo para o agricultor usar sozinho foi estudado e descartado.

@@ -2,8 +2,10 @@
 
 Planejamento de rotação de culturas com dados da NASA, com dois lados:
 
-- **Técnico** (agrônomo, técnico agrícola, extensionista): cadastra os produtores que atende (e cria o acesso deles), marca as propriedades no mapa, desenha talhões, registra visitas, envia o laudo de solo por foto, compara rotações e publica o plano.
-- **Produtor**: não cria conta sozinho. Entra com e-mail ou celular e a senha enviada pelo técnico; vê o plano em linguagem simples, marca as tarefas feitas, recebe alertas de clima e relata problemas com foto e GPS.
+- **Técnico** (agrônomo, técnico agrícola, extensionista): cadastra os produtores que atende (e cria o acesso deles), marca as propriedades no mapa, desenha talhões, registra visitas, envia o laudo de solo por foto, compara rotações, gera o relatório de decisão e publica o plano.
+- **Produtor**: não cria conta sozinho. Entra com e-mail ou celular e a senha enviada pelo técnico; vê as propriedades, os talhões e o clima, e abre o plano em linguagem simples, com as opções que foram comparadas. Responde "Combinado" ou "Tenho dúvida"; a conversa continua com o técnico pelo WhatsApp.
+
+O técnico fica no meio de propósito: a rotação é decidida por quem conhece a terra, junto com o agricultor. O app não é feito para o agricultor usar sozinho.
 
 Estrutura: técnico → produtores → propriedades → talhões. Decisões do MVP em [`docs/decisoes.md`](docs/decisoes.md).
 
@@ -21,6 +23,16 @@ NASA Space Apps Challenge 2026 · desafio *Field Shift: Adapting Farms with NASA
 | Claude (Anthropic) | **Planejado, não integrado.** Ler o laudo por foto/PDF e escrever o texto do plano para o produtor. No app, esses botões mostram um aviso | — |
 
 O desenho da integração com IA está em `docs/decisoes.md` (item 9).
+
+## Uso de IA no projeto
+
+O app não usa IA: nenhuma recomendação, nota ou texto que o técnico e o produtor veem é gerado por IA. As notas vêm de regras fixas sobre os dados da NASA, a visita e o laudo. A equipe usou o Claude (Anthropic) só para:
+
+- **Prototipação do MVP:** apoio na escrita do código (Claude Code).
+- **Pesquisa:** o desafio, o fluxo do agro brasileiro e soluções parecidas que já existem.
+- **Análise e comparação de dados:** leitura dos dados da NASA e comparação das rotações e dos concorrentes.
+
+As decisões de produto e as regras agronômicas foram revisadas pela equipe, com a consultoria de um especialista em manejo do solo.
 
 ## Rodar localmente
 
