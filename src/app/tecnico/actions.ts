@@ -296,9 +296,21 @@ export async function salvarPlano(form: FormData) {
     justificativa: txt(form, "justificativa"),
     safra: txt(form, "safra") ?? "2026/27",
     // Publicar (de novo) é uma versão nova: o produtor vê como plano novo e responde outra vez
-    ...(publicar ? { status: "publicado", publicado_em: new Date().toISOString(), visto_em: null, resposta: null, duvida: null, respondido_em: null } : {}),
+    ...(publicar ? { status: "publicado", publicado_em: new Date().toISOString(), visto_em: null, resposta: null, duvida: null, respondido_em: null, resposta_tecnico: null, resposta_tecnico_em: null } : {}),
   }).eq("id", id);
   revalidatePath(`/tecnico/talhoes/${talhaoId}`);
+}
+
+/** Resposta do técnico à dúvida do produtor sobre o plano; o produtor vê na tela do plano. */
+export async function responderDuvidaPlano(form: FormData) {
+  const { supabase } = await exigirPerfil("tecnico");
+  const id = String(form.get("plano_id"));
+  const talhaoId = String(form.get("talhao_id"));
+  const texto = txt(form, "resposta_tecnico");
+  if (!texto) return;
+  await supabase.from("planos").update({ resposta_tecnico: texto, resposta_tecnico_em: new Date().toISOString() }).eq("id", id).eq("resposta", "duvida");
+  revalidatePath(`/tecnico/talhoes/${talhaoId}`);
+  revalidatePath("/tecnico");
 }
 
 export async function excluirPlano(form: FormData) {

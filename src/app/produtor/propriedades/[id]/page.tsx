@@ -16,7 +16,7 @@ import { tecnicoDoProdutor } from "@/lib/tecnico-do-produtor";
 import type { Ocorrencia, Plano, Propriedade, Talhao, Tarefa, Visita } from "@/lib/tipos";
 import { TalhoesEMapa } from "./talhoes-e-mapa";
 
-type PlanoResumo = Pick<Plano, "id" | "talhao_id" | "rotacao_nome" | "safra" | "visto_em" | "resposta">;
+type PlanoResumo = Pick<Plano, "id" | "talhao_id" | "rotacao_nome" | "safra" | "visto_em" | "resposta" | "resposta_tecnico">;
 
 export default async function PropriedadeProdutor(props: PageProps<"/produtor/propriedades/[id]">) {
   const { id } = await props.params;
@@ -37,7 +37,7 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
   const [{ data: tarefas }, { data: planos }] = tIds.length
     ? await Promise.all([
       supabase.from("tarefas").select("*").in("talhao_id", tIds).eq("status", "pendente").order("criado_em").returns<Tarefa[]>(),
-      supabase.from("planos").select("id, talhao_id, rotacao_nome, safra, visto_em, resposta").in("talhao_id", tIds).eq("status", "publicado").order("publicado_em", { ascending: false }).returns<PlanoResumo[]>(),
+      supabase.from("planos").select("id, talhao_id, rotacao_nome, safra, visto_em, resposta, resposta_tecnico").in("talhao_id", tIds).eq("status", "publicado").order("publicado_em", { ascending: false }).returns<PlanoResumo[]>(),
     ])
     : [{ data: [] as Tarefa[] }, { data: [] as PlanoResumo[] }];
   // O clima da NASA POWER tem grade de ~50 km: o primeiro talhão vale para a propriedade toda
@@ -49,8 +49,8 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
   const coordenadas = `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`;
   const local = [p.municipio, p.uf].filter(Boolean).join(" - ");
   const nomeTalhao = (tid: string) => lista.find((t) => t.id === tid)?.nome;
-  // Planos publicados que o produtor ainda não respondeu: aparecem em destaque no topo
-  const semResposta = (planos ?? []).filter((x) => !x.resposta);
+  // Em destaque no topo: planos sem resposta e dúvidas que o técnico já respondeu (a vez é do produtor)
+  const semResposta = (planos ?? []).filter((x) => !x.resposta || (x.resposta === "duvida" && x.resposta_tecnico));
   // Única propriedade: o início redireciona para cá, então a trilha não volta para a lista
   const unica = nPropriedades === 1;
 
@@ -68,10 +68,19 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
           {semResposta.map((pl) => (
             <div key={pl.id} className="flex flex-wrap items-center gap-3 rounded-2xl border-2 border-brand bg-brand-soft p-4">
               <div className="min-w-0 flex-1">
-                <span className="eyebrow">{pl.visto_em ? "Esperando sua resposta" : "Plano novo"}</span>
-                <p><b>Seu técnico publicou o plano da safra {pl.safra}</b> para o talhão <b>{nomeTalhao(pl.talhao_id)}</b>: {pl.rotacao_nome}.</p>
+                {pl.resposta_tecnico ? (
+                  <>
+                    <span className="eyebrow">Resposta do técnico</span>
+                    <p><b>Seu técnico respondeu sua dúvida</b> sobre o plano {pl.safra} do talhão <b>{nomeTalhao(pl.talhao_id)}</b>.</p>
+                  </>
+                ) : (
+                  <>
+                    <span className="eyebrow">{pl.visto_em ? "Esperando sua resposta" : "Plano novo"}</span>
+                    <p><b>Seu técnico publicou o plano da safra {pl.safra}</b> para o talhão <b>{nomeTalhao(pl.talhao_id)}</b>: {pl.rotacao_nome}.</p>
+                  </>
+                )}
               </div>
-              <Link href={`/produtor/planos/${pl.id}`} className="btn">Ver o plano</Link>
+              <Link href={`/produtor/planos/${pl.id}`} className="btn">{pl.resposta_tecnico ? "Ver a resposta" : "Ver o plano"}</Link>
             </div>
           ))}
         </section>

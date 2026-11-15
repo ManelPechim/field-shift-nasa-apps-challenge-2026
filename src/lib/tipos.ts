@@ -138,6 +138,9 @@ export interface Plano {
   resposta: "combinado" | "duvida" | null;
   duvida: string | null;
   respondido_em: string | null;
+  /** Resposta do técnico à dúvida (zera quando o produtor manda dúvida nova) */
+  resposta_tecnico: string | null;
+  resposta_tecnico_em: string | null;
   criado_em: string;
 }
 

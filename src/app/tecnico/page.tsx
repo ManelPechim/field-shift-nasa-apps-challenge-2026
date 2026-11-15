@@ -23,7 +23,7 @@ export default async function PainelTecnico(props: PageProps<"/tecnico">) {
   const [{ data: clientes }, { data: ocorrencias }, { data: duvidas }] = await Promise.all([
     consulta.returns<Linha[]>(),
     supabase.from("ocorrencias").select("id, tipo, descricao, criado_em, talhao_id, propriedade_id, talhoes(nome), propriedades(nome, produtores(nome))").eq("status", "nova").order("criado_em", { ascending: false }).limit(10),
-    supabase.from("planos").select("id, safra, duvida, respondido_em, talhao_id, talhoes(nome, propriedades(nome, produtores(nome)))").eq("resposta", "duvida").order("respondido_em", { ascending: false }).limit(10),
+    supabase.from("planos").select("id, safra, duvida, respondido_em, talhao_id, talhoes(nome, propriedades(nome, produtores(nome)))").eq("resposta", "duvida").is("resposta_tecnico", null).order("respondido_em", { ascending: false }).limit(10),
   ]);
 
   return (
@@ -38,7 +38,7 @@ export default async function PainelTecnico(props: PageProps<"/tecnico">) {
 
       {!!duvidas?.length && (
         <section className="mb-8">
-          <h2 className="h2 mb-2">Dúvidas sobre planos</h2>
+          <h2 className="h2 mb-2">Dúvidas sobre planos para responder</h2>
           <ul className="grid gap-2">
             {duvidas.map((d) => {
               const t = d.talhoes as unknown as { nome: string; propriedades: { nome: string; produtores: { nome: string } } } | null;

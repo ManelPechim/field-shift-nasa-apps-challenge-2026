@@ -27,8 +27,8 @@ export default async function InicioProdutor() {
   const [{ data: tarefas }, { data: planosNovos }] = tIds.length
     ? await Promise.all([
       supabase.from("tarefas").select("*").in("talhao_id", tIds).eq("status", "pendente").order("criado_em").returns<Tarefa[]>(),
-      // Planos publicados sem resposta do produtor: viram selo no card da propriedade
-      supabase.from("planos").select("talhao_id").in("talhao_id", tIds).eq("status", "publicado").is("resposta", null).returns<{ talhao_id: string }[]>(),
+      // Planos sem resposta do produtor ou com dúvida já respondida: viram selo no card da propriedade
+      supabase.from("planos").select("talhao_id").in("talhao_id", tIds).eq("status", "publicado").or("resposta.is.null,and(resposta.eq.duvida,resposta_tecnico.not.is.null)").returns<{ talhao_id: string }[]>(),
     ])
     : [{ data: [] as Tarefa[] }, { data: [] as { talhao_id: string }[] }];
   const talhoesDe = (pid: string) => talhoes?.filter((t) => t.propriedade_id === pid) ?? [];
@@ -76,7 +76,7 @@ export default async function InicioProdutor() {
                       </dl>
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="flex flex-wrap gap-1.5">
-                          {planosNovosDe(p.id) > 0 && <Selo tom="info">Plano novo para ver</Selo>}
+                          {planosNovosDe(p.id) > 0 && <Selo tom="info">Plano para ver</Selo>}
                           {pend > 0 ? <Selo tom="atencao">{pend} tarefa{pend > 1 ? "s" : ""} pendente{pend > 1 ? "s" : ""}</Selo> : <Selo tom="bom">Nada pendente</Selo>}
                         </span>
                         <span className="text-sm font-semibold text-brand">Abrir propriedade →</span>

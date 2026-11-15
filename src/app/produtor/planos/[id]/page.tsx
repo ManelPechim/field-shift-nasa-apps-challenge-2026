@@ -92,7 +92,8 @@ export default async function PlanoDoProdutor(props: PageProps<"/produtor/planos
         </div>
 
         <aside className="grid content-start gap-3 lg:sticky lg:top-24">
-          <RespostaAoPlano key={plano.respondido_em ?? "sem-resposta"} planoId={plano.id} resposta={plano.resposta} duvida={plano.duvida} respondidoEm={plano.respondido_em} />
+          <RespostaAoPlano key={plano.respondido_em ?? "sem-resposta"} planoId={plano.id} resposta={plano.resposta} duvida={plano.duvida} respondidoEm={plano.respondido_em}
+            respostaTecnico={plano.resposta_tecnico} respostaTecnicoEm={plano.resposta_tecnico_em} nomeTecnico={tecnico?.nome.split(" ")[0] ?? "O técnico"} />
           {tecnico?.telefone && (
             <a href={linkWhatsApp(tecnico.telefone, `Olá, ${tecnico.nome.split(" ")[0]}! Sobre o plano ${plano.safra} do ${t.nome}: `)} target="_blank" rel="noreferrer" className="btn-ghost no-underline">
               Falar com {tecnico.nome.split(" ")[0]} no WhatsApp · {formatarCelular(tecnico.telefone)}

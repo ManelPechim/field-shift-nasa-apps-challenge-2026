@@ -3,7 +3,7 @@ import { CalendarioRotacao } from "@/components/graficos";
 import { Selo, Vazio, dataBR } from "@/components/ui";
 import { regiaoDe, rotacaoPorId } from "@/lib/agro/culturas";
 import { ocupacao } from "@/lib/agro/rotacao";
-import { adicionarTarefa, excluirPlano, removerTarefa, salvarPlano } from "@/app/tecnico/actions";
+import { adicionarTarefa, excluirPlano, removerTarefa, responderDuvidaPlano, salvarPlano } from "@/app/tecnico/actions";
 import { formatarCelular, linkWhatsApp } from "@/lib/contato";
 import type { Plano, Talhao, Tarefa } from "@/lib/tipos";
 import { CampoResumo } from "./resumo";
@@ -14,21 +14,40 @@ function SituacaoComProdutor({ plano, talhao, produtor }: { plano: Plano; talhao
   const quando = (d: string | null) => (d ? new Date(d).toLocaleDateString("pt-BR") : "");
   const [tom, titulo, texto] =
     plano.resposta === "combinado" ? (["bg-ok-soft", `${primeiro} combinou o plano`, `Em ${quando(plano.respondido_em)}.`] as const)
+    : plano.resposta === "duvida" && plano.resposta_tecnico ? (["bg-sat-soft", `Você respondeu a dúvida de ${primeiro}`, `Pergunta de ${quando(plano.respondido_em)}; sua resposta de ${quando(plano.resposta_tecnico_em)}. Agora é a vez de ${primeiro}: combinar ou mandar outra dúvida.`] as const)
     : plano.resposta === "duvida" ? (["bg-warn-soft", `${primeiro} tem uma dúvida`, `Em ${quando(plano.respondido_em)}.`] as const)
     : plano.visto_em ? (["bg-sat-soft", `${primeiro} abriu o plano, mas ainda não respondeu`, `Viu em ${quando(plano.visto_em)}.`] as const)
-    : (["bg-surface-2", `${primeiro} ainda não abriu o plano`, "Ele recebe um aviso em destaque na página da propriedade."] as const);
+    : (["bg-surface-2", `${primeiro} ainda não abriu o plano`, `${primeiro} recebe um aviso em destaque na página da propriedade.`] as const);
   return (
     <div className={`grid gap-1 rounded-xl p-3 text-sm ${tom}`}>
       <b>{titulo}</b>
       <span className="text-muted">{texto}</span>
       {plano.resposta === "duvida" && plano.duvida && <p className="mt-1 rounded-md bg-surface px-2 py-1">“{plano.duvida}”</p>}
+      {plano.resposta === "combinado" && plano.duvida && (
+        <div className="mt-1 grid gap-1 rounded-md bg-surface px-2 py-1">
+          <span className="text-xs text-muted">Antes de combinar, a conversa foi:</span>
+          <span><b>{primeiro}:</b> “{plano.duvida}”</span>
+          {plano.resposta_tecnico && <span><b>Você:</b> “{plano.resposta_tecnico}”</span>}
+        </div>
+      )}
+      {plano.resposta === "duvida" && (
+        <form action={responderDuvidaPlano} className="mt-2 grid gap-2">
+          <input type="hidden" name="plano_id" value={plano.id} />
+          <input type="hidden" name="talhao_id" value={talhao.id} />
+          <label className="label mb-0" htmlFor={`resposta-tecnico-${plano.id}`}>{plano.resposta_tecnico ? "Sua resposta (pode editar)" : `Responder para ${primeiro}`}</label>
+          <textarea className="input min-h-20 bg-surface" id={`resposta-tecnico-${plano.id}`} name="resposta_tecnico" required defaultValue={plano.resposta_tecnico ?? ""}
+            placeholder="Dá para usar sorgo no lugar do milho: planta com a mesma máquina da soja. Passo aí semana que vem para combinar." />
+          <button className="btn btn-sm justify-self-start">{plano.resposta_tecnico ? "Atualizar resposta" : "Enviar resposta"}</button>
+          <span className="text-xs text-muted">{primeiro} vê a resposta na tela do plano, com um aviso na página da propriedade.</span>
+        </form>
+      )}
       {plano.resposta === "duvida" && produtor?.telefone && (
         <a className="font-semibold" target="_blank" rel="noreferrer"
           href={linkWhatsApp(produtor.telefone, `Olá, ${primeiro}! Sobre sua dúvida no plano ${plano.safra} do ${talhao.nome}: `)}>
-          Responder no WhatsApp · {formatarCelular(produtor.telefone)}
+          Ou fale no WhatsApp · {formatarCelular(produtor.telefone)}
         </a>
       )}
-      {plano.resposta === "duvida" && <span className="text-xs text-muted">Se mudar o plano, publique de novo: ele recebe como plano atualizado e responde outra vez.</span>}
+      {plano.resposta === "duvida" && <span className="text-xs text-muted">Se mudar o plano, publique de novo: {primeiro} recebe como plano atualizado e responde outra vez.</span>}
     </div>
   );
 }
