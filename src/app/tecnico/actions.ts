@@ -3,11 +3,14 @@
 import area from "@turf/area";
 import centroid from "@turf/centroid";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Polygon } from "geojson";
 import { exigirPerfil } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { mensagemDeAcesso, normalizarCelular } from "@/lib/contato";
 import { CULTURAS, MESES_NOME, nomeCultura, rotacaoPorId } from "@/lib/agro/culturas";
-import type { CondicoesVisita, ValoresSolo } from "@/lib/tipos";
+import type { CondicoesVisita, Produtor, ValoresSolo } from "@/lib/tipos";
 
 const txt = (f: FormData, k: string) => {
   const v = String(f.get(k) ?? "").trim();
@@ -20,35 +23,103 @@ const numero = (f: FormData, k: string) => {
   return Number.isFinite(n) ? n : null;
 };
 
+async function siteAtual() {
+  const h = await headers();
+  return `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
+}
+
+export type EstadoAcesso =
+  | { erro?: string; ok?: undefined; valores?: Record<string, string> }
+  | { ok: true; produtorId: string; nome: string; email: string; celular: string; senha: string; mensagem: string }
+  | undefined;
+
+/**
+ * O técnico cadastra o cliente e cria o login dele (e-mail ou celular + senha).
+ * MVP: o técnico define a senha. O ideal (ver docs/decisoes.md) é um link de primeiro acesso pelo WhatsApp.
+ */
+export async function criarProdutor(_: EstadoAcesso, form: FormData): Promise<EstadoAcesso> {
+  const { supabase, perfil } = await exigirPerfil("tecnico");
+  const nome = txt(form, "nome");
+  const email = txt(form, "email")?.toLowerCase();
+  const celular = normalizarCelular(txt(form, "celular"));
+  const senha = String(form.get("senha") ?? "");
+  const falha = (erro: string) => ({ erro, valores: { nome: nome ?? "", email: email ?? "", celular: txt(form, "celular") ?? "", observacoes: txt(form, "observacoes") ?? "" } });
+  if (!nome) return falha("Informe o nome do produtor.");
+  if (!email || !email.includes("@")) return falha("Informe um e-mail válido.");
+  if (!celular) return falha("Celular inválido. Use DDD + número, por exemplo (51) 99999-8888.");
+  if (senha.length < 8) return falha("A senha precisa ter pelo menos 8 caracteres.");
+
+  const admin = supabaseAdmin();
+  const { data: mesmoCelular } = await admin.from("perfis").select("id").eq("telefone", celular).limit(1).maybeSingle();
+  if (mesmoCelular) return falha("Já existe uma conta com esse celular.");
+
+  const { data: criado, error: erroConta } = await admin.auth.admin.createUser({
+    email,
+    password: senha,
+    email_confirm: true,
+    user_metadata: { nome, papel: "produtor", telefone: celular },
+  });
+  if (erroConta || !criado.user) {
+    return falha(erroConta?.message.includes("already") ? "Já existe uma conta com esse e-mail." : `Não foi possível criar o acesso: ${erroConta?.message}`);
+  }
+  const { data: produtor, error } = await supabase
+    .from("produtores")
+    .insert({ tecnico_id: perfil.id, usuario_id: criado.user.id, nome, email, telefone: celular, observacoes: txt(form, "observacoes") })
+    .select("id")
+    .single();
+  if (error) {
+    await admin.auth.admin.deleteUser(criado.user.id);
+    return falha(`Não foi possível salvar o cliente: ${error.message}`);
+  }
+  revalidatePath("/tecnico");
+  return { ok: true, produtorId: produtor.id, nome, email, celular, senha, mensagem: mensagemDeAcesso({ nome, email, celular, senha, site: await siteAtual() }) };
+}
+
+export async function redefinirSenha(_: EstadoAcesso, form: FormData): Promise<EstadoAcesso> {
+  const { supabase } = await exigirPerfil("tecnico");
+  const senha = String(form.get("senha") ?? "");
+  if (senha.length < 8) return { erro: "A senha precisa ter pelo menos 8 caracteres." };
+  // A leitura passa pela regra de acesso: só encontra se o produtor for deste técnico
+  const { data: p } = await supabase.from("produtores").select("*").eq("id", String(form.get("produtor_id"))).maybeSingle<Produtor>();
+  if (!p?.usuario_id) return { erro: "Cliente não encontrado." };
+  const { error } = await supabaseAdmin().auth.admin.updateUserById(p.usuario_id, { password: senha });
+  if (error) return { erro: `Não foi possível trocar a senha: ${error.message}` };
+  return { ok: true, produtorId: p.id, nome: p.nome, email: p.email, celular: p.telefone, senha, mensagem: mensagemDeAcesso({ nome: p.nome, email: p.email, celular: p.telefone, senha, site: await siteAtual() }) };
+}
+
+export async function editarProdutor(form: FormData) {
+  const { supabase } = await exigirPerfil("tecnico");
+  const id = String(form.get("produtor_id"));
+  await supabase.from("produtores").update({ nome: txt(form, "nome") ?? "Produtor", observacoes: txt(form, "observacoes") }).eq("id", id);
+  revalidatePath(`/tecnico/produtores/${id}`);
+}
+
 export async function criarPropriedade(form: FormData) {
   const { supabase } = await exigirPerfil("tecnico");
+  const produtorId = String(form.get("produtor_id"));
+  const lat = numero(form, "lat"), lon = numero(form, "lon");
+  if (lat == null || lon == null) throw new Error("Marque o local da propriedade no mapa.");
+  const limite = JSON.parse(String(form.get("limite") || "null")) as Polygon | null;
+  const valido = limite?.type === "Polygon" && limite.coordinates[0].length >= 4;
   const { data, error } = await supabase
     .from("propriedades")
     .insert({
+      produtor_id: produtorId,
       nome: txt(form, "nome") ?? "Propriedade sem nome",
       municipio: txt(form, "municipio"),
       uf: txt(form, "uf")?.toUpperCase().slice(0, 2),
+      endereco: txt(form, "endereco"),
       car_codigo: txt(form, "car"),
-      produtor_nome: txt(form, "produtor_nome"),
-      produtor_email: txt(form, "produtor_email")?.toLowerCase(),
-      produtor_telefone: txt(form, "produtor_telefone"),
+      lat,
+      lon,
+      limite: valido ? limite : null,
+      area_ha: valido ? Math.round((area(limite!) / 10000) * 100) / 100 : null,
       observacoes: txt(form, "observacoes"),
     })
     .select("id")
     .single();
   if (error) throw new Error(`Não foi possível salvar a propriedade: ${error.message}`);
   redirect(`/tecnico/propriedades/${data.id}`);
-}
-
-export async function editarProdutor(form: FormData) {
-  const { supabase } = await exigirPerfil("tecnico");
-  const id = String(form.get("propriedade_id"));
-  await supabase.from("propriedades").update({
-    produtor_nome: txt(form, "produtor_nome"),
-    produtor_email: txt(form, "produtor_email")?.toLowerCase(),
-    produtor_telefone: txt(form, "produtor_telefone"),
-  }).eq("id", id);
-  revalidatePath(`/tecnico/propriedades/${id}`);
 }
 
 export async function criarTalhao(form: FormData) {

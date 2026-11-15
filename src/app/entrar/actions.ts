@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { supabaseServidor } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { normalizarCelular } from "@/lib/contato";
 
 export type EstadoEntrar = { erro?: string; aviso?: string } | undefined;
 
@@ -13,22 +15,33 @@ async function destino() {
   return perfil?.papel === "tecnico" ? "/tecnico" : "/produtor";
 }
 
+/** Login com e-mail ou celular. O celular é trocado pelo e-mail da conta no servidor. */
 export async function entrar(_: EstadoEntrar, form: FormData): Promise<EstadoEntrar> {
+  const login = String(form.get("login") ?? "").trim();
+  const senha = String(form.get("senha") ?? "");
+  let email = login.toLowerCase();
+  if (!login.includes("@")) {
+    const celular = normalizarCelular(login);
+    if (!celular) return { erro: "Digite o e-mail ou o celular com DDD." };
+    const { data } = await supabaseAdmin().from("perfis").select("email").eq("telefone", celular).limit(1).maybeSingle();
+    if (!data?.email) return { erro: "E-mail, celular ou senha incorretos." };
+    email = data.email;
+  }
   const supabase = await supabaseServidor();
-  const { error } = await supabase.auth.signInWithPassword({
-    email: String(form.get("email") ?? "").trim(),
-    password: String(form.get("senha") ?? ""),
-  });
-  if (error) return { erro: "E-mail ou senha incorretos." };
+  const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+  if (error) return { erro: "E-mail, celular ou senha incorretos." };
   redirect(await destino());
 }
 
+/** Só técnicos criam conta sozinhos. O acesso do produtor é criado pelo técnico. */
 export async function criarConta(_: EstadoEntrar, form: FormData): Promise<EstadoEntrar> {
-  const papel = form.get("papel") === "tecnico" ? "tecnico" : "produtor";
   const nome = String(form.get("nome") ?? "").trim();
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const senha = String(form.get("senha") ?? "");
+  const telefoneBruto = String(form.get("telefone") ?? "").trim();
+  const telefone = telefoneBruto ? normalizarCelular(telefoneBruto) : null;
   if (!nome) return { erro: "Informe seu nome." };
+  if (telefoneBruto && !telefone) return { erro: "Celular inválido. Use DDD + número, por exemplo (51) 99999-8888." };
   if (senha.length < 8) return { erro: "A senha precisa ter pelo menos 8 caracteres." };
   if (form.get("consentimento") !== "on") return { erro: "Para criar a conta, aceite o uso dos dados descrito abaixo." };
 
@@ -39,8 +52,8 @@ export async function criarConta(_: EstadoEntrar, form: FormData): Promise<Estad
     options: {
       data: {
         nome,
-        papel,
-        telefone: String(form.get("telefone") ?? "").trim() || null,
+        papel: "tecnico",
+        telefone,
         registro_profissional: String(form.get("registro") ?? "").trim() || null,
         instituicao: String(form.get("instituicao") ?? "").trim() || null,
       },
@@ -48,7 +61,7 @@ export async function criarConta(_: EstadoEntrar, form: FormData): Promise<Estad
   });
   if (error) return { erro: error.message.includes("registered") ? "Já existe uma conta com esse e-mail. Use Entrar." : `Não foi possível criar a conta: ${error.message}` };
   if (!data.session) return { aviso: "Conta criada. Confira seu e-mail para confirmar o cadastro e depois entre." };
-  redirect(papel === "tecnico" ? "/tecnico" : "/produtor");
+  redirect("/tecnico");
 }
 
 export async function sair() {

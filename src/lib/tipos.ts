@@ -12,16 +12,31 @@ export interface Perfil {
   instituicao: string | null;
 }
 
+/** Cliente do técnico. O acesso (login) é criado pelo técnico. */
+export interface Produtor {
+  id: string;
+  tecnico_id: string;
+  usuario_id: string | null;
+  nome: string;
+  email: string;
+  telefone: string;
+  observacoes: string | null;
+  criado_em: string;
+}
+
 export interface Propriedade {
   id: string;
   tecnico_id: string;
+  produtor_id: string;
   nome: string;
   municipio: string | null;
   uf: string | null;
+  endereco: string | null;
   car_codigo: string | null;
-  produtor_nome: string | null;
-  produtor_email: string | null;
-  produtor_telefone: string | null;
+  lat: number;
+  lon: number;
+  limite: Polygon | null;
+  area_ha: number | null;
   observacoes: string | null;
   criado_em: string;
 }

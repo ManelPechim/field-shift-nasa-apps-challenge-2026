@@ -7,23 +7,27 @@ import { Mapa, type TalhaoNoMapa } from "@/components/mapa";
 export function NovoTalhao({
   propriedadeId,
   talhoes,
+  limite,
+  ponto,
   rotacoes,
   acao,
 }: {
   propriedadeId: string;
   talhoes: TalhaoNoMapa[];
+  limite: Polygon | null;
+  ponto: [number, number];
   rotacoes: { id: string; nome: string; regiao: string }[];
   acao: (form: FormData) => Promise<void>;
 }) {
   const [poligono, setPoligono] = useState<Polygon | null>(null);
   const [ha, setHa] = useState(0);
   const [salvando, setSalvando] = useState(false);
-  const lat = poligono?.coordinates[0][0][1];
+  const lat = poligono?.coordinates[0][0][1] ?? ponto[1];
   const regiao = lat == null ? null : lat < -24 ? "sul" : "cerrado";
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <Mapa talhoes={talhoes} hrefTalhao="/tecnico/talhoes/" desenhar={(p, h) => { setPoligono(p); setHa(h); }} altura="h-[460px]" />
+      <Mapa talhoes={talhoes} limite={limite} ponto={ponto} hrefTalhao="/tecnico/talhoes/" desenhar={(p, h) => { setPoligono(p); setHa(h); }} altura="h-[460px]" />
       <form action={acao} onSubmit={() => setSalvando(true)} className="card grid content-start gap-4 p-4">
         <input type="hidden" name="propriedade_id" value={propriedadeId} />
         <input type="hidden" name="geojson" value={poligono ? JSON.stringify(poligono) : ""} />

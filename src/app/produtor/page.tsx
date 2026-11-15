@@ -16,7 +16,7 @@ export default async function InicioProdutor() {
       <Pagina>
         <h1 className="h1 mb-4">Olá, {perfil.nome.split(" ")[0]}</h1>
         <Vazio titulo="Suas lavouras ainda não aparecem aqui">
-          Peça ao seu técnico para cadastrar sua propriedade no Field Shift com o e-mail <b>{perfil.email}</b>. Assim que ele salvar, ela aparece nesta tela.
+          Seu técnico ainda não cadastrou suas propriedades. Assim que ele marcar a propriedade no mapa, ela aparece nesta tela.
         </Vazio>
       </Pagina>
     );
