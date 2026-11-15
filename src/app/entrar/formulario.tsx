@@ -40,7 +40,7 @@ export function FormularioEntrar({ modoInicial }: { modoInicial: "entrar" | "cri
             <div><label className="label" htmlFor="registro">Registro (CREA/CFTA)</label><input className="input" id="registro" name="registro" /></div>
             <div><label className="label" htmlFor="instituicao">Empresa ou instituição</label><input className="input" id="instituicao" name="instituicao" placeholder="Emater, cooperativa, consultoria…" /></div>
           </div>
-          <div><label className="label" htmlFor="senha2">Senha</label><input className="input" id="senha2" name="senha" type="password" autoComplete="new-password" minLength={8} required /><p className="mt-1 text-xs text-muted">Pelo menos 8 caracteres.</p></div>
+          <div><label className="label" htmlFor="senha2">Senha</label><input className="input" id="senha2" name="senha" type="password" autoComplete="new-password" required /></div>
           <label className="flex gap-2 text-sm">
             <input type="checkbox" name="consentimento" className="mt-1" required />
             <span>Concordo que meus dados e os dos produtores que eu cadastrar (nome, contato e localização das áreas) sejam guardados para o funcionamento do Field Shift durante o período de testes, conforme a LGPD. Tenho autorização dos produtores para cadastrá-los. A exclusão pode ser pedida a qualquer momento.</span>

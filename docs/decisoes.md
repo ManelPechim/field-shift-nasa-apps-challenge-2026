@@ -36,3 +36,7 @@ Município, UF e endereço vêm do OpenStreetMap (Nominatim) a partir do ponto m
 ## 6. Confirmação de e-mail desligada
 
 Desligada no Supabase durante os testes, porque o envio de e-mail padrão só chega a membros da equipe do projeto. Antes de abrir o app ao público: configurar um provedor de e-mail (SMTP) e religar a confirmação.
+
+## 7. Sem validação de senha e de celular no app (15/11/2026)
+
+Para não travar os testes, o app não exige tamanho mínimo de senha nem formato de celular. O celular só é limpo (ficam os dígitos; com DDD ganha o 55) para servir de login. Continua valendo o mínimo de **6 caracteres** do próprio Supabase, que não pode ser desligado. Antes de produção: voltar a validar o celular (DDD + número) e exigir uma senha mais forte.

@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 import type { Polygon } from "geojson";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { mensagemDeAcesso, normalizarCelular } from "@/lib/contato";
+import { erroDeSenha, mensagemDeAcesso, normalizarCelular } from "@/lib/contato";
 import { CULTURAS, MESES_NOME, nomeCultura, rotacaoPorId } from "@/lib/agro/culturas";
 import type { CondicoesVisita, Produtor, ValoresSolo } from "@/lib/tipos";
 
@@ -46,8 +46,8 @@ export async function criarProdutor(_: EstadoAcesso, form: FormData): Promise<Es
   const falha = (erro: string) => ({ erro, valores: { nome: nome ?? "", email: email ?? "", celular: txt(form, "celular") ?? "", observacoes: txt(form, "observacoes") ?? "" } });
   if (!nome) return falha("Informe o nome do produtor.");
   if (!email || !email.includes("@")) return falha("Informe um e-mail válido.");
-  if (!celular) return falha("Celular inválido. Use DDD + número, por exemplo (51) 99999-8888.");
-  if (senha.length < 8) return falha("A senha precisa ter pelo menos 8 caracteres.");
+  if (!celular) return falha("Informe o celular.");
+  if (!senha) return falha("Informe a senha.");
 
   const admin = supabaseAdmin();
   const { data: mesmoCelular } = await admin.from("perfis").select("id").eq("telefone", celular).limit(1).maybeSingle();
@@ -60,7 +60,7 @@ export async function criarProdutor(_: EstadoAcesso, form: FormData): Promise<Es
     user_metadata: { nome, papel: "produtor", telefone: celular },
   });
   if (erroConta || !criado.user) {
-    return falha(erroConta?.message.includes("already") ? "Já existe uma conta com esse e-mail." : `Não foi possível criar o acesso: ${erroConta?.message}`);
+    return falha(erroDeSenha(erroConta?.message ?? "") ?? (erroConta?.message.includes("already") ? "Já existe uma conta com esse e-mail." : `Não foi possível criar o acesso: ${erroConta?.message}`));
   }
   const { data: produtor, error } = await supabase
     .from("produtores")
@@ -78,12 +78,12 @@ export async function criarProdutor(_: EstadoAcesso, form: FormData): Promise<Es
 export async function redefinirSenha(_: EstadoAcesso, form: FormData): Promise<EstadoAcesso> {
   const { supabase } = await exigirPerfil("tecnico");
   const senha = String(form.get("senha") ?? "");
-  if (senha.length < 8) return { erro: "A senha precisa ter pelo menos 8 caracteres." };
+  if (!senha) return { erro: "Informe a senha nova." };
   // A leitura passa pela regra de acesso: só encontra se o produtor for deste técnico
   const { data: p } = await supabase.from("produtores").select("*").eq("id", String(form.get("produtor_id"))).maybeSingle<Produtor>();
   if (!p?.usuario_id) return { erro: "Cliente não encontrado." };
   const { error } = await supabaseAdmin().auth.admin.updateUserById(p.usuario_id, { password: senha });
-  if (error) return { erro: `Não foi possível trocar a senha: ${error.message}` };
+  if (error) return { erro: erroDeSenha(error.message) ?? `Não foi possível trocar a senha: ${error.message}` };
   return { ok: true, produtorId: p.id, nome: p.nome, email: p.email, celular: p.telefone, senha, mensagem: mensagemDeAcesso({ nome: p.nome, email: p.email, celular: p.telefone, senha, site: await siteAtual() }) };
 }
 

@@ -10,10 +10,10 @@ export function CampoSenha({ inicial, id = "senha", rotulo = "Senha de acesso" }
     <div>
       <label className="label" htmlFor={id}>{rotulo}</label>
       <div className="flex gap-2">
-        <input className="input font-mono" id={id} name="senha" value={senha} onChange={(e) => setSenha(e.target.value)} minLength={8} required autoComplete="off" />
+        <input className="input font-mono" id={id} name="senha" value={senha} onChange={(e) => setSenha(e.target.value)} required autoComplete="off" />
         <button type="button" className="btn-ghost btn-sm whitespace-nowrap" onClick={() => setSenha(sugerirSenha())}>Outra</button>
       </div>
-      <p className="mt-1 text-xs text-muted">Sugerimos uma senha fácil de ditar. Pode trocar por outra com pelo menos 8 caracteres.</p>
+      <p className="mt-1 text-xs text-muted">Sugerimos uma senha fácil de ditar. Pode trocar por outra.</p>
     </div>
   );
 }

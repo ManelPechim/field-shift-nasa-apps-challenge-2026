@@ -1,9 +1,9 @@
-/** Celular só com dígitos e DDI 55. Retorna null se não parecer um celular brasileiro. */
+/** Celular só com dígitos; com DDD (10 ou 11 dígitos) ganha o DDI 55. Sem validação de formato (decisão do MVP). */
 export function normalizarCelular(v: string | null | undefined) {
   let d = String(v ?? "").replace(/\D/g, "");
   if (d.startsWith("0")) d = d.replace(/^0+/, "");
   if (d.length === 10 || d.length === 11) d = `55${d}`;
-  return d.length === 12 || d.length === 13 ? d : null;
+  return d || null;
 }
 
 /** 5551999998888 → (51) 99999-8888 */
@@ -20,6 +20,11 @@ export function sugerirSenha() {
   const n = new Uint32Array(2);
   crypto.getRandomValues(n);
   return `${PALAVRAS[n[0] % PALAVRAS.length]}-${1000 + (n[1] % 9000)}`;
+}
+
+/** O Supabase exige no mínimo 6 caracteres na senha; traduz o erro dele. */
+export function erroDeSenha(mensagem: string) {
+  return /password/i.test(mensagem) && /(6|characters|weak)/i.test(mensagem) ? "A senha precisa ter pelo menos 6 caracteres (exigência do sistema de login)." : null;
 }
 
 export function linkWhatsApp(celular: string, texto?: string) {

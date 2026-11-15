@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { supabaseServidor } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { normalizarCelular } from "@/lib/contato";
+import { erroDeSenha, normalizarCelular } from "@/lib/contato";
 
 export type EstadoEntrar = { erro?: string; aviso?: string } | undefined;
 
@@ -22,7 +22,7 @@ export async function entrar(_: EstadoEntrar, form: FormData): Promise<EstadoEnt
   let email = login.toLowerCase();
   if (!login.includes("@")) {
     const celular = normalizarCelular(login);
-    if (!celular) return { erro: "Digite o e-mail ou o celular com DDD." };
+    if (!celular) return { erro: "Digite o e-mail ou o celular." };
     const { data } = await supabaseAdmin().from("perfis").select("email").eq("telefone", celular).limit(1).maybeSingle();
     if (!data?.email) return { erro: "E-mail, celular ou senha incorretos." };
     email = data.email;
@@ -41,8 +41,6 @@ export async function criarConta(_: EstadoEntrar, form: FormData): Promise<Estad
   const telefoneBruto = String(form.get("telefone") ?? "").trim();
   const telefone = telefoneBruto ? normalizarCelular(telefoneBruto) : null;
   if (!nome) return { erro: "Informe seu nome." };
-  if (telefoneBruto && !telefone) return { erro: "Celular inválido. Use DDD + número, por exemplo (51) 99999-8888." };
-  if (senha.length < 8) return { erro: "A senha precisa ter pelo menos 8 caracteres." };
   if (form.get("consentimento") !== "on") return { erro: "Para criar a conta, aceite o uso dos dados descrito abaixo." };
 
   const supabase = await supabaseServidor();
@@ -59,7 +57,7 @@ export async function criarConta(_: EstadoEntrar, form: FormData): Promise<Estad
       },
     },
   });
-  if (error) return { erro: error.message.includes("registered") ? "Já existe uma conta com esse e-mail. Use Entrar." : `Não foi possível criar a conta: ${error.message}` };
+  if (error) return { erro: erroDeSenha(error.message) ?? (error.message.includes("registered") ? "Já existe uma conta com esse e-mail. Use Entrar." : `Não foi possível criar a conta: ${error.message}`) };
   if (!data.session) return { aviso: "Conta criada. Confira seu e-mail para confirmar o cadastro e depois entre." };
   redirect("/tecnico");
 }
