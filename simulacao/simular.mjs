@@ -14,7 +14,6 @@
 
 import { chromium } from "playwright-core";
 import { createClient } from "@supabase/supabase-js";
-import { PNG } from "pngjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -148,23 +147,6 @@ async function tocarNoMapa(pagina, mapa, pontos) {
     await pagina.mouse.click(b.x + b.width / 2 + dx, b.y + b.height / 2 + dy);
     await pausa(150);
   }
-}
-
-function fotoDaLavoura() {
-  // Imagem gerada (folhas com manchas), só para o relato ter uma foto anexada
-  const png = new PNG({ width: 480, height: 360 });
-  for (let y = 0; y < 360; y++) for (let x = 0; x < 480; x++) {
-    const i = (480 * y + x) << 2;
-    const ruido = Math.sin(x / 9) * Math.cos(y / 11) * 30;
-    const mancha = (x - 300) ** 2 + (y - 160) ** 2 < 2600 || (x - 140) ** 2 + (y - 240) ** 2 < 1500;
-    png.data[i] = mancha ? 150 + ruido : 60 + ruido;
-    png.data[i + 1] = mancha ? 110 + ruido : 140 + ruido;
-    png.data[i + 2] = mancha ? 40 : 50;
-    png.data[i + 3] = 255;
-  }
-  const arquivo = path.join(SAIDA, "foto-da-lavoura.png");
-  writeFileSync(arquivo, PNG.sync.write(png));
-  return arquivo;
 }
 
 function supabaseAdmin() {
@@ -366,10 +348,27 @@ async function main() {
       await Promise.all([tec.waitForURL(/\/tecnico$/), tec.getByRole("button", { name: "Criar conta de técnico" }).click()]);
     });
 
-    const { urlPropriedade: urlPropriedadeTec, urlTalhao: urlTalhaoTec } = await cadastrarCliente(tec, CLIENTES[0], { mostrarNasa: true });
-    const talhaoPrincipal = CLIENTES[0].talhoes[0].nome;
+    const { urlTalhao: urlTalhaoTec } = await cadastrarCliente(tec, CLIENTES[0], { mostrarNasa: true });
 
-    await passo(tec, "Técnico", "Compara as rotações e escolhe uma", "As rotações possíveis para a região, com notas de solo, erosão, clima, renda, água e forragem. O técnico escolhe e o app monta o plano com as tarefas.", async () => {
+    await passo(tec, "Técnico", "Compara a rotação atual com duas alternativas", "A atual e as duas que mais combinam com as prioridades, com nota por critério. Cada opção traz o porquê, as evidências com selo (dado NASA, informação local, regra, hipótese), os riscos e o que falta saber.", async () => {
+      await tec.goto(`${urlTalhaoTec}?aba=rotacoes`);
+      await tec.getByRole("heading", { name: "Comparação lado a lado" }).scrollIntoViewIfNeeded();
+    });
+
+    await passo(tec, "Técnico", "Testa o cenário de La Niña", "Com chuva abaixo da média na safra, o app recalcula riscos e notas. É hipótese para testar a decisão, não previsão.", async () => {
+      await tec.selectOption("#cenario", "seco");
+      await Promise.all([tec.waitForURL("**cenario=seco**"), tec.getByRole("button", { name: "Recalcular" }).click()]);
+      await tec.getByRole("heading", { name: "Comparação lado a lado" }).scrollIntoViewIfNeeded();
+    });
+
+    await passo(tec, "Técnico", "Gera o relatório de decisão", "Uma página para imprimir ou salvar em PDF: evidência da NASA, perfil do talhão, as três opções nos três cenários, próximos passos e fontes.", async () => {
+      await tec.selectOption("#cenario", "normal");
+      await Promise.all([tec.waitForURL("**cenario=normal**"), tec.getByRole("button", { name: "Recalcular" }).click()]);
+      await Promise.all([tec.waitForURL("**/relatorio?**"), tec.getByRole("link", { name: "Relatório de decisão" }).click()]);
+      await tec.getByRole("heading", { name: "Riscos e cenários" }).scrollIntoViewIfNeeded();
+    });
+
+    await passo(tec, "Técnico", "Escolhe a alternativa e monta o plano", "O app monta o plano com as tarefas na ordem: corrigir o solo, depois plantar.", async () => {
       await tec.goto(`${urlTalhaoTec}?aba=rotacoes`);
       const escolher = tec.getByRole("button", { name: "Escolher esta e montar o plano" }).first();
       await escolher.scrollIntoViewIfNeeded();
@@ -384,7 +383,7 @@ async function main() {
       await tec.getByText(/ainda não abriu o plano/).waitFor();
     });
 
-    // ───────── Produtor: recebe o plano e tira uma dúvida ─────────
+    // ───────── Produtor: recebe o plano, vê as opções e responde ─────────
     await passo(prod, "Produtor", "Entra pelo celular", "Login com o número de celular e a senha que o técnico mandou. Com uma propriedade só, o app abre direto nela.", async () => {
       await prod.goto(`${URL_BASE}/entrar`);
       await prod.fill('input[name="login"]', PRODUTOR.celular);
@@ -392,96 +391,21 @@ async function main() {
       await Promise.all([prod.waitForURL("**/produtor/propriedades/**"), prod.getByRole("button", { name: "Entrar", exact: true }).click()]);
       await prod.getByText("Plano novo").waitFor();
     });
-    const urlPropriedadeProd = prod.url();
 
-    await passo(prod, "Produtor", "Abre o plano novo", "O plano contado em quatro partes: o que muda, por quê, quando (calendário) e o que fazer.", async () => {
+    await passo(prod, "Produtor", "Abre o plano e vê as opções comparadas", "O que muda, as três opções que o técnico comparou (com a nota de cada uma), por quê, quando e o que fazer.", async () => {
       await prod.getByRole("link", { name: "Ver o plano" }).click();
       await prod.waitForURL("**/produtor/planos/**");
-      await prod.getByRole("heading", { name: "1. O que muda" }).waitFor();
-    });
-    const urlPlanoProd = prod.url();
-
-    await passo(prod, "Produtor", "Manda uma dúvida sobre o plano", "Algo não encaixa na realidade dele? Ele pergunta, e o técnico vê na hora.", async () => {
-      await prod.getByRole("button", { name: "Tenho dúvida" }).click();
-      await prod.fill("#duvida", "Não tenho semeadora para aveia. Dá para jogar a lanço?");
-      await prod.getByRole("button", { name: "Enviar dúvida" }).click();
-      await prod.getByText("Você mandou uma dúvida ao técnico.").waitFor();
+      await prod.getByRole("heading", { name: "2. O que mais foi comparado" }).scrollIntoViewIfNeeded();
     });
 
-    // ───────── Técnico responde ─────────
-    await passo(tec, "Técnico", "Responde a dúvida pelo app", "A dúvida aparece na tela inicial do técnico. A resposta vai para a tela do plano do produtor.", async () => {
-      await tec.goto(`${URL_BASE}/tecnico`);
-      await tec.locator("section", { hasText: "Dúvidas sobre planos para responder" }).first().locator("a").first().click();
-      await tec.waitForURL("**aba=plano");
-      await tec.fill('textarea[name="resposta_tecnico"]', "Dá sim: a lanço, logo antes de uma chuva, com um pouco mais de semente (uns 20% a mais). Passo aí para regular a máquina com você.");
-      await tec.getByRole("button", { name: "Enviar resposta" }).click();
-      await tec.getByText(/Você respondeu a dúvida de/).waitFor();
-    });
-
-    // ───────── Produtor combina, trabalha e relata ─────────
-    await passo(prod, "Produtor", "Vê a resposta e combina o plano", "O aviso volta à propriedade com a resposta. Ele lê a conversa e confirma.", async () => {
-      await prod.goto(urlPropriedadeProd);
-      await prod.getByRole("link", { name: "Ver a resposta" }).click();
-      await prod.waitForURL("**/produtor/planos/**");
+    await passo(prod, "Produtor", "Combina o plano", "O produtor decide: combinado, ou manda uma dúvida. O técnico vê a resposta.", async () => {
       await prod.getByRole("button", { name: "Combinado" }).click();
       await prod.getByText("Você combinou este plano com o técnico.").waitFor();
     });
 
-    await passo(prod, "Produtor", "Marca uma tarefa como feita", "Cada tarefa do plano tem um botão grande. O comentário vai para o técnico.", async () => {
-      await prod.goto(urlPlanoProd);
-      // Acha a tarefa pelo título, não pela posição
-      const titulo = await prod.locator("#tarefas li b").first().innerText();
-      const tarefa = prod.locator("#tarefas li", { hasText: titulo });
-      await tarefa.scrollIntoViewIfNeeded();
-      await tarefa.locator('input[name="nota"]').fill("Feito no sábado, comprei na cooperativa.");
-      await tarefa.getByRole("button", { name: "Marquei como feito" }).click();
-      await tarefa.getByText(/Feita em/).waitFor();
-    });
-
-    await passo(prod, "Produtor", "Relata uma praga com foto", "Pela barra do celular: escolhe o talhão, toca no ponto exato no mapa, tira a foto e conta o que viu.", async () => {
-      await prod.goto(urlPropriedadeProd);
-      await prod.getByRole("navigation", { name: "Atalhos" }).getByRole("link", { name: "Relatar" }).click();
-      await prod.waitForURL("**/relatar");
-      await prod.getByText("Um talhão específico", { exact: true }).click();
-      await prod.locator("label", { hasText: talhaoPrincipal }).click();
-      await esperar(2500);
-      await tocarNoMapa(prod, prod.locator(".maplibregl-canvas"), [[-15, 20]]);
-      await prod.getByText("Ponto que você marcou no mapa").waitFor();
-      await prod.getByText("Praga", { exact: true }).click();
-      await prod.setInputFiles('input[name="foto"]', fotoDaLavoura());
-      await prod.fill("#descricao", "Lagarta comendo as folhas numa mancha perto da cerca, desde segunda.");
-      await Promise.all([prod.waitForURL("**/produtor/talhoes/**?relato=ok"), prod.getByRole("button", { name: "Enviar para o técnico" }).click()]);
-    });
-
-    // ───────── Técnico fecha o ciclo ─────────
-    await passo(tec, "Técnico", "Vê o relato no mapa da propriedade", "Cada relato vira um pino no local anexado, na cor da situação (laranja: novo).", async () => {
-      await tec.goto(urlPropriedadeTec);
-      const pino = tec.locator('.maplibregl-marker[aria-label^="Praga"]');
-      await pino.waitFor();
-      await tec.locator("section", { hasText: "Cadastrar novo talhão" }).locator(".maplibregl-canvas").scrollIntoViewIfNeeded();
-    });
-
-    await passo(tec, "Técnico", "Responde o relato e marca resolvido", "Abre o relato com a foto, orienta o produtor e marca como resolvido.", async () => {
-      await tec.locator('.maplibregl-marker[aria-label^="Praga"]').click();
-      await tec.waitForURL("**aba=campo");
-      await tec.locator('input[name="resposta"]').first().fill("Pela foto é lagarta-falsa-medideira. Passo amanhã cedo para contar e decidir se precisa aplicar.");
-      await tec.getByRole("button", { name: "Marcar resolvida" }).first().click();
-      await tec.getByText("Resolvida", { exact: true }).first().waitFor();
-    });
-
-    await passo(tec, "Técnico", "Acompanha o plano combinado e a tarefa feita", "Na aba Plano: o produtor combinou (com a conversa guardada) e a tarefa aparece como feita, com o comentário dele.", async () => {
+    await passo(tec, "Técnico", "Vê que o produtor combinou o plano", "Na aba Plano, a situação com o produtor: não abriu, abriu, combinou ou tem dúvida.", async () => {
       await tec.goto(`${urlTalhaoTec}?aba=plano`);
       await tec.getByText(/combinou o plano/).waitFor();
-      await tec.getByText(/Produtor: Feito no sábado/).scrollIntoViewIfNeeded();
-    });
-
-    await passo(prod, "Produtor", "Recebe a resposta do relato", "Na página do talhão, o relato aparece como resolvido, com a orientação do técnico.", async () => {
-      await prod.goto(urlPropriedadeProd);
-      await prod.locator("li", { hasText: talhaoPrincipal }).getByRole("link", { name: "Abrir talhão" }).click();
-      await prod.waitForURL("**/produtor/talhoes/**");
-      const relato = prod.getByText(/Técnico:/).first();
-      await relato.waitFor();
-      await relato.scrollIntoViewIfNeeded();
     });
 
     // ───────── Exemplo: segunda cliente, tudo cadastrado e esperando o plano ─────────

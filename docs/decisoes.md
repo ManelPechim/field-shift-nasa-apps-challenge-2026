@@ -67,3 +67,19 @@ Os dois pontos em que a IA entraria continuam visíveis no app, com a etiqueta "
 - O técnico revisaria o rascunho antes de publicar.
 
 Para ligar no futuro: modelo `claude-opus-5-5` com fallback no servidor (`server-side-fallback-2026-07-01`), chave em `ANTHROPIC_API_KEY` (variável sensível na Vercel), custo de US$ 4 por milhão de tokens de entrada e US$ 20 por milhão de saída.
+
+## 10. Escopo enxuto, centrado na comparação de rotações (15/11/2026)
+
+A validação contra o texto do desafio 6 e o guia de mentoria mostrou que o núcleo (comparar a rotação atual com alternativas usando dados da NASA, solo e prioridades) estava pronto, mas escondido entre funções que o desafio não pede. A análise está em https://claude.ai/artifact/VGMLtXfKivhMPreU4sHKn4.
+
+**Saíram da interface:** os relatos de campo (foto, ponto no mapa, pinos e aba Campo), a conversa do plano (resposta do técnico dentro do app), a marcação de tarefas como feitas e a barra fixa do celular. É monitoramento e execução de safra, terreno de apps como Strider e os das Emater. O código está no histórico do git (antes do commit `cbfc8e7`). A tabela `ocorrencias` e as colunas de resposta do técnico continuam no banco, sem uso.
+
+**Ficou:** o produtor responde ao plano com "Combinado" ou "Tenho dúvida", que é o julgamento do agricultor que o desafio pede. A conversa segue pelo WhatsApp. As tarefas aparecem como lista dentro do plano.
+
+**Entrou:**
+- O relatório de decisão do talhão, com as três opções nos três cenários, os próximos passos e as fontes.
+- Os selos de tipo de evidência: dado NASA, informação local, regra agronômica e hipótese de cenário.
+- As opções comparadas na tela do plano do produtor.
+- O critério renomeado para "Potencial de renda (índice)".
+
+**Enquadramento:** a ferramenta é usada pelo técnico junto com o agricultor (no Sul, 48,6% dos estabelecimentos recebem orientação técnica; no Brasil, cerca de 20%, Censo Agro 2017). O uso pelo agricultor sozinho é uma opção apresentada.
