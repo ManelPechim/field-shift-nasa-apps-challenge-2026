@@ -42,3 +42,6 @@ next-env.d.ts
 
 # worker do MapLibre copiado no build
 /public/maplibre/
+
+# Fotos e relatórios das simulações
+/simulacao/saida/

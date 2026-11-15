@@ -31,6 +31,26 @@ npm install
 npm run dev
 ```
 
+## Simulação do fluxo completo
+
+Com o servidor rodando (`npm run dev -- -p 3123`), `npm run simulacao` abre duas janelas do Chrome, uma do técnico e outra do produtor no tamanho de celular, e percorre o app clicando de verdade. São 21 passos, nesta ordem:
+
+1. **Técnico:** cria a conta, cadastra o produtor, marca a propriedade e dois talhões, lê os dados da NASA, registra a visita e a análise de solo, escolhe a rotação e publica o plano.
+2. **Produtor:** entra pelo celular, abre o plano e manda uma dúvida.
+3. **Técnico:** responde a dúvida.
+4. **Produtor:** combina o plano, marca uma tarefa como feita e relata uma praga com foto e ponto no mapa.
+5. **Técnico:** vê o relato no mapa, responde e acompanha o plano.
+6. **Produtor:** recebe a resposta do relato.
+
+| Comando | O que faz |
+|---|---|
+| `npm run simulacao` | Mostra cada passo devagar, com as janelas abertas |
+| `npm run simulacao -- --rapido` | Roda sem janela e sem pausas, para conferir se nada quebrou |
+| `npm run simulacao -- --manter` | Não apaga os dados no fim; imprime os logins para explorar à mão |
+| `npm run simulacao -- --limpar` | Apaga os dados de todas as simulações anteriores (e-mails `sim.*@field.test`) |
+
+Cada execução cria um técnico e um produtor novos e, no fim, apaga tudo o que criou. As fotos de cada passo e um `relatorio.html` ficam em `simulacao/saida/<data>/`, que não vai para o git. O relatório também lista os erros que aparecerem no console do navegador. Usa o Chrome instalado (`playwright-core`, sem baixar navegador). O banco é o mesmo da produção, por isso a limpeza no fim importa.
+
 ## Banco (Supabase)
 
 Esquema em `supabase/migrations/`. Tabelas: `perfis`, `produtores`, `propriedades`, `talhoes`, `visitas`, `amostras`, `dados_nasa`, `planos`, `tarefas`, `ocorrencias`, mais o bucket privado `arquivos`. Todas com RLS: o técnico vê os clientes que cadastrou; o produtor vê só as próprias propriedades e os planos publicados.

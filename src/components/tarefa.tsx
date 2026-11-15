@@ -13,13 +13,14 @@ export function TarefaProdutor({ t, talhao }: { t: Tarefa; talhao?: string }) {
         {t.descricao && <p className="mt-1 text-sm">{t.descricao}</p>}
       </div>
       {feita ? (
-        <form action={concluirTarefa} className="flex flex-wrap items-center gap-3 text-sm">
+        // key: as duas formas ficam no mesmo lugar; sem ela o React reaproveitaria o campo de comentário como o campo oculto "feita"
+        <form key="feita" action={concluirTarefa} className="flex flex-wrap items-center gap-3 text-sm">
           <input type="hidden" name="tarefa_id" value={t.id} /><input type="hidden" name="feita" value="0" />
           <span className="font-semibold text-ok">Feita em {dataBR(t.feita_em)}</span>
           <button className="text-muted underline">Desfazer</button>
         </form>
       ) : (
-        <form action={concluirTarefa} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <form key="pendente" action={concluirTarefa} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
           <input type="hidden" name="tarefa_id" value={t.id} />
           <input className="input" name="nota" aria-label="Comentário (opcional)" placeholder="Comentário para o técnico (opcional)" />
           <button className="btn">Marquei como feito</button>

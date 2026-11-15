@@ -282,7 +282,10 @@ export async function criarPlano(form: FormData) {
     });
   });
   tarefas.push({ titulo: "Relatar como foi a safra", descricao: "Conte no app se teve praga, doença, chuva forte ou seca, e como foi a colheita.", quando: "Depois da colheita" });
-  await supabase.from("tarefas").insert(tarefas.map((t) => ({ ...t, talhao_id: talhaoId, plano_id: plano.id })));
+  // Inseridas juntas, teriam o mesmo criado_em e a ordem na tela mudaria a cada carga.
+  // 1 ms entre elas mantém a ordem do plano: correções do solo, depois plantios, depois o relato da safra.
+  const base = Date.now();
+  await supabase.from("tarefas").insert(tarefas.map((t, i) => ({ ...t, talhao_id: talhaoId, plano_id: plano.id, criado_em: new Date(base + i).toISOString() })));
   redirect(`/tecnico/talhoes/${talhaoId}?aba=plano`);
 }
 

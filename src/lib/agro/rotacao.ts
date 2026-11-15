@@ -185,9 +185,12 @@ export function riscosDaRotacao(av: Avaliacao, R: Riscos) {
   const out: string[] = [];
   [...av.penalidades].sort((a, b) => b.total - a.total).forEach((p) => {
     if (out.length >= 2) return;
-    if (p.alag >= 12) out.push(`${nomeCultura(p.id)} sofre com solo encharcado${R.alagamento >= 3 ? "; o risco de perda é alto nesta área" : ""}.`);
-    else if (p.seca >= 12) out.push(`${nomeCultura(p.id)} sente a falta de chuva no período em que fica no campo.`);
-    else if (p.geada >= 8) out.push(`${nomeCultura(p.id)} pode perder produção com geada na floração.`);
+    const risco = p.alag >= 12 ? `${nomeCultura(p.id)} sofre com solo encharcado${R.alagamento >= 3 ? "; o risco de perda é alto nesta área" : ""}.`
+      : p.seca >= 12 ? `${nomeCultura(p.id)} sente a falta de chuva no período em que fica no campo.`
+      : p.geada >= 8 ? `${nomeCultura(p.id)} pode perder produção com geada na floração.`
+      : null;
+    // A mesma cultura aparece nos dois anos da rotação: conta o risco uma vez só
+    if (risco && !out.includes(risco)) out.push(risco);
   });
   const s = av.rotacao.slots;
   if (!av.alternaVerao && s[0]) out.push(`Mesma cultura todo verão: pragas e doenças da ${minus(nomeCultura(s[0]))} se acumulam.`);
