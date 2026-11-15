@@ -45,3 +45,7 @@ next-env.d.ts
 
 # Fotos e relatórios das simulações
 /simulacao/saida/
+
+# Prints e imagens de trabalho soltos na raiz
+/*.png
+/*.jpg
