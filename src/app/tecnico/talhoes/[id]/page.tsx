@@ -31,7 +31,7 @@ export default async function PaginaTalhao(props: PageProps<"/tecnico/talhoes/[i
   const { data: t } = await supabase.from("talhoes").select("*").eq("id", id).maybeSingle<Talhao>();
   if (!t) notFound();
   const [{ data: prop }, { data: visitas }, { data: amostras }, { data: planos }, { data: tarefas }, { data: ocorrencias }, { data: vizinhos }] = await Promise.all([
-    supabase.from("propriedades").select("*, produtores(id, nome)").eq("id", t.propriedade_id).single<Propriedade & { produtores: { id: string; nome: string } }>(),
+    supabase.from("propriedades").select("*, produtores(id, nome, telefone)").eq("id", t.propriedade_id).single<Propriedade & { produtores: { id: string; nome: string; telefone: string } }>(),
     supabase.from("visitas").select("*").eq("propriedade_id", t.propriedade_id).or(`talhao_id.eq.${t.id},talhao_id.is.null`).order("data", { ascending: false }).returns<Visita[]>(),
     supabase.from("amostras").select("*").eq("talhao_id", t.id).order("criado_em", { ascending: false }).returns<Amostra[]>(),
     supabase.from("planos").select("*").eq("talhao_id", t.id).order("criado_em", { ascending: false }).returns<Plano[]>(),
@@ -86,7 +86,7 @@ export default async function PaginaTalhao(props: PageProps<"/tecnico/talhoes/[i
       {aba === "dados" && nasa && <AbaDados talhao={t} clima={nasa.clima} relevo={nasa.relevo} erros={nasa.erros} visita={visita} />}
       {aba === "solo" && <AbaSolo talhao={t} amostras={amostras ?? []} />}
       {aba === "rotacoes" && nasa && <AbaRotacoes talhao={t} clima={nasa.clima} relevo={nasa.relevo} visita={visita} amostra={amostras?.[0] ?? null} sp={sp} />}
-      {aba === "plano" && <AbaPlano talhao={t} planos={planos ?? []} tarefas={tarefas ?? []} />}
+      {aba === "plano" && <AbaPlano talhao={t} planos={planos ?? []} tarefas={tarefas ?? []} produtor={prop?.produtores ?? null} />}
       {aba === "campo" && <AbaCampo talhao={t} ocorrencias={ocorrencias ?? []} />}
     </Pagina>
   );

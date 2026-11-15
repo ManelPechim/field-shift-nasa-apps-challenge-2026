@@ -4,10 +4,36 @@ import { Selo, Vazio, dataBR } from "@/components/ui";
 import { regiaoDe, rotacaoPorId } from "@/lib/agro/culturas";
 import { ocupacao } from "@/lib/agro/rotacao";
 import { adicionarTarefa, excluirPlano, removerTarefa, salvarPlano } from "@/app/tecnico/actions";
+import { formatarCelular, linkWhatsApp } from "@/lib/contato";
 import type { Plano, Talhao, Tarefa } from "@/lib/tipos";
 import { CampoResumo } from "./resumo";
 
-export function AbaPlano({ talhao, planos, tarefas }: { talhao: Talhao; planos: Plano[]; tarefas: Tarefa[] }) {
+/** Situação do plano publicado do lado do produtor: não visto, visto, combinado ou com dúvida. */
+function SituacaoComProdutor({ plano, talhao, produtor }: { plano: Plano; talhao: Talhao; produtor: { nome: string; telefone: string } | null }) {
+  const primeiro = produtor?.nome.split(" ")[0] ?? "O produtor";
+  const quando = (d: string | null) => (d ? new Date(d).toLocaleDateString("pt-BR") : "");
+  const [tom, titulo, texto] =
+    plano.resposta === "combinado" ? (["bg-ok-soft", `${primeiro} combinou o plano`, `Em ${quando(plano.respondido_em)}.`] as const)
+    : plano.resposta === "duvida" ? (["bg-warn-soft", `${primeiro} tem uma dúvida`, `Em ${quando(plano.respondido_em)}.`] as const)
+    : plano.visto_em ? (["bg-sat-soft", `${primeiro} abriu o plano, mas ainda não respondeu`, `Viu em ${quando(plano.visto_em)}.`] as const)
+    : (["bg-surface-2", `${primeiro} ainda não abriu o plano`, "Ele recebe um aviso em destaque na página da propriedade."] as const);
+  return (
+    <div className={`grid gap-1 rounded-xl p-3 text-sm ${tom}`}>
+      <b>{titulo}</b>
+      <span className="text-muted">{texto}</span>
+      {plano.resposta === "duvida" && plano.duvida && <p className="mt-1 rounded-md bg-surface px-2 py-1">“{plano.duvida}”</p>}
+      {plano.resposta === "duvida" && produtor?.telefone && (
+        <a className="font-semibold" target="_blank" rel="noreferrer"
+          href={linkWhatsApp(produtor.telefone, `Olá, ${primeiro}! Sobre sua dúvida no plano ${plano.safra} do ${talhao.nome}: `)}>
+          Responder no WhatsApp · {formatarCelular(produtor.telefone)}
+        </a>
+      )}
+      {plano.resposta === "duvida" && <span className="text-xs text-muted">Se mudar o plano, publique de novo: ele recebe como plano atualizado e responde outra vez.</span>}
+    </div>
+  );
+}
+
+export function AbaPlano({ talhao, planos, tarefas, produtor }: { talhao: Talhao; planos: Plano[]; tarefas: Tarefa[]; produtor: { nome: string; telefone: string } | null }) {
   const plano = planos[0];
   if (!plano) {
     return (
@@ -28,6 +54,7 @@ export function AbaPlano({ talhao, planos, tarefas }: { talhao: Talhao; planos: 
           <Selo tom={plano.status === "publicado" ? "bom" : "atencao"}>{plano.status === "publicado" ? `Publicado em ${dataBR(plano.publicado_em)}` : "Rascunho: o produtor ainda não vê"}</Selo>
         </div>
         <h2 className="font-display text-xl font-bold">{plano.rotacao_nome}</h2>
+        {plano.status === "publicado" && <SituacaoComProdutor plano={plano} talhao={talhao} produtor={produtor} />}
         {rot && <CalendarioRotacao ocupacao={ocupacao(rot, regiaoDe(talhao.centroide_lat!))} />}
         <form action={salvarPlano} className="grid gap-4">
           <input type="hidden" name="plano_id" value={plano.id} />
@@ -38,9 +65,10 @@ export function AbaPlano({ talhao, planos, tarefas }: { talhao: Talhao; planos: 
             <label className="label" htmlFor="justificativa">Justificativa técnica (só o técnico vê)</label>
             <textarea className="input min-h-24" id="justificativa" name="justificativa" defaultValue={plano.justificativa ?? ""} placeholder="Por que esta rotação, premissas, o que precisa ser confirmado." />
           </div>
+          {plano.status === "publicado" && <p className="text-xs text-muted">“Publicar de novo” avisa o produtor que o plano mudou e pede uma resposta nova. “Salvar sem avisar” guarda uma correção pequena (um erro de digitação) sem pedir resposta nova.</p>}
           <div className="flex flex-wrap gap-2">
-            <button className="btn-ghost btn-sm" name="publicar" value="0">Salvar rascunho</button>
-            <button className="btn btn-sm" name="publicar" value="1">{plano.status === "publicado" ? "Salvar e manter publicado" : "Publicar para o produtor"}</button>
+            <button className="btn-ghost btn-sm" name="publicar" value="0">{plano.status === "publicado" ? "Salvar sem avisar" : "Salvar rascunho"}</button>
+            <button className="btn btn-sm" name="publicar" value="1">{plano.status === "publicado" ? "Salvar e publicar de novo" : "Publicar para o produtor"}</button>
           </div>
         </form>
       </section>

@@ -20,9 +20,10 @@ export default async function PainelTecnico(props: PageProps<"/tecnico">) {
     .eq("tecnico_id", perfil.id)
     .order("nome");
   if (busca) consulta = consulta.ilike("nome", `%${busca}%`);
-  const [{ data: clientes }, { data: ocorrencias }] = await Promise.all([
+  const [{ data: clientes }, { data: ocorrencias }, { data: duvidas }] = await Promise.all([
     consulta.returns<Linha[]>(),
     supabase.from("ocorrencias").select("id, tipo, descricao, criado_em, talhao_id, propriedade_id, talhoes(nome), propriedades(nome, produtores(nome))").eq("status", "nova").order("criado_em", { ascending: false }).limit(10),
+    supabase.from("planos").select("id, safra, duvida, respondido_em, talhao_id, talhoes(nome, propriedades(nome, produtores(nome)))").eq("resposta", "duvida").order("respondido_em", { ascending: false }).limit(10),
   ]);
 
   return (
@@ -34,6 +35,26 @@ export default async function PainelTecnico(props: PageProps<"/tecnico">) {
         </div>
         <Link href="/tecnico/produtores/novo" className="btn">Novo cliente</Link>
       </div>
+
+      {!!duvidas?.length && (
+        <section className="mb-8">
+          <h2 className="h2 mb-2">Dúvidas sobre planos</h2>
+          <ul className="grid gap-2">
+            {duvidas.map((d) => {
+              const t = d.talhoes as unknown as { nome: string; propriedades: { nome: string; produtores: { nome: string } } } | null;
+              return (
+                <li key={d.id}>
+                  <Link href={`/tecnico/talhoes/${d.talhao_id}?aba=plano`} className="card flex flex-wrap items-center gap-3 p-3 text-ink no-underline hover:border-brand">
+                    <Selo tom="atencao">Plano {d.safra}</Selo>
+                    <span className="min-w-0 flex-1 truncate">“{d.duvida}”</span>
+                    <span className="text-sm text-muted">{t?.propriedades.produtores.nome} · {t?.propriedades.nome} · {t?.nome} · {dataBR(d.respondido_em)}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {!!ocorrencias?.length && (
         <section className="mb-8">

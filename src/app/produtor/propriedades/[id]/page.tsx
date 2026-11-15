@@ -16,6 +16,8 @@ import { tecnicoDoProdutor } from "@/lib/tecnico-do-produtor";
 import type { Ocorrencia, Plano, Propriedade, Talhao, Tarefa, Visita } from "@/lib/tipos";
 import { TalhoesEMapa } from "./talhoes-e-mapa";
 
+type PlanoResumo = Pick<Plano, "id" | "talhao_id" | "rotacao_nome" | "safra" | "visto_em" | "resposta">;
+
 export default async function PropriedadeProdutor(props: PageProps<"/produtor/propriedades/[id]">) {
   const { id } = await props.params;
   const { relato } = await props.searchParams;
@@ -35,9 +37,9 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
   const [{ data: tarefas }, { data: planos }] = tIds.length
     ? await Promise.all([
       supabase.from("tarefas").select("*").in("talhao_id", tIds).eq("status", "pendente").order("criado_em").returns<Tarefa[]>(),
-      supabase.from("planos").select("talhao_id, rotacao_nome, safra").in("talhao_id", tIds).eq("status", "publicado").order("publicado_em", { ascending: false }).returns<Pick<Plano, "talhao_id" | "rotacao_nome" | "safra">[]>(),
+      supabase.from("planos").select("id, talhao_id, rotacao_nome, safra, visto_em, resposta").in("talhao_id", tIds).eq("status", "publicado").order("publicado_em", { ascending: false }).returns<PlanoResumo[]>(),
     ])
-    : [{ data: [] as Tarefa[] }, { data: [] as Pick<Plano, "talhao_id" | "rotacao_nome" | "safra">[] }];
+    : [{ data: [] as Tarefa[] }, { data: [] as PlanoResumo[] }];
   // O clima da NASA POWER tem grade de ~50 km: o primeiro talhão vale para a propriedade toda
   const nasa = lista[0] ? await dadosNasa(supabase, lista[0]).catch(() => null) : null;
   const alertas = alertasDoClima(nasa?.clima ?? null);
@@ -47,6 +49,8 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
   const coordenadas = `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`;
   const local = [p.municipio, p.uf].filter(Boolean).join(" - ");
   const nomeTalhao = (tid: string) => lista.find((t) => t.id === tid)?.nome;
+  // Planos publicados que o produtor ainda não respondeu: aparecem em destaque no topo
+  const semResposta = (planos ?? []).filter((x) => !x.resposta);
   // Única propriedade: o início redireciona para cá, então a trilha não volta para a lista
   const unica = nPropriedades === 1;
 
@@ -58,6 +62,20 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
       ]} />}
 
       {relato === "ok" && <p role="status" className="mb-4 rounded-xl bg-ok-soft p-3 text-ok">Relato da propriedade inteira enviado. Seu técnico vai ver e responder aqui.</p>}
+
+      {semResposta.length > 0 && (
+        <section aria-label="Planos para responder" className="mb-6 grid gap-2">
+          {semResposta.map((pl) => (
+            <div key={pl.id} className="flex flex-wrap items-center gap-3 rounded-2xl border-2 border-brand bg-brand-soft p-4">
+              <div className="min-w-0 flex-1">
+                <span className="eyebrow">{pl.visto_em ? "Esperando sua resposta" : "Plano novo"}</span>
+                <p><b>Seu técnico publicou o plano da safra {pl.safra}</b> para o talhão <b>{nomeTalhao(pl.talhao_id)}</b>: {pl.rotacao_nome}.</p>
+              </div>
+              <Link href={`/produtor/planos/${pl.id}`} className="btn">Ver o plano</Link>
+            </div>
+          ))}
+        </section>
+      )}
 
       <UnidadeDeArea>
         <header className="card mb-10 grid gap-5 p-5">

@@ -295,7 +295,8 @@ export async function salvarPlano(form: FormData) {
     resumo_produtor: txt(form, "resumo_produtor"),
     justificativa: txt(form, "justificativa"),
     safra: txt(form, "safra") ?? "2026/27",
-    ...(publicar ? { status: "publicado", publicado_em: new Date().toISOString() } : {}),
+    // Publicar (de novo) é uma versão nova: o produtor vê como plano novo e responde outra vez
+    ...(publicar ? { status: "publicado", publicado_em: new Date().toISOString(), visto_em: null, resposta: null, duvida: null, respondido_em: null } : {}),
   }).eq("id", id);
   revalidatePath(`/tecnico/talhoes/${talhaoId}`);
 }

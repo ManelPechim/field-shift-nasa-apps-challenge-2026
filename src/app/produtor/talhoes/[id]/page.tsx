@@ -55,6 +55,12 @@ export default async function TalhaoProdutor(props: PageProps<"/produtor/talhoes
               <div><span className="eyebrow">Safra {plano.safra}</span><b className="block font-display text-lg">{plano.rotacao_nome}</b></div>
               {plano.resumo_produtor && <p className="whitespace-pre-line">{plano.resumo_produtor}</p>}
               {rot && <CalendarioRotacao ocupacao={ocupacao(rot, regiaoDe(t.centroide_lat!))} />}
+              <div className="flex flex-wrap items-center gap-3 border-t border-line pt-3">
+                {plano.resposta === "combinado" ? <Selo tom="bom">Combinado</Selo>
+                  : plano.resposta === "duvida" ? <Selo tom="info">Dúvida enviada</Selo>
+                  : <Selo tom="atencao">Esperando sua resposta</Selo>}
+                <Link href={`/produtor/planos/${plano.id}`} className={plano.resposta ? "btn-ghost btn-sm" : "btn btn-sm"}>{plano.resposta ? "Ver o plano completo" : "Ver o plano e responder"}</Link>
+              </div>
             </div>
           ) : <Vazio titulo="O plano ainda não foi publicado">Seu técnico está preparando. Quando publicar, aparece aqui.</Vazio>}
 

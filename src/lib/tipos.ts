@@ -133,6 +133,11 @@ export interface Plano {
   dados: Record<string, unknown>;
   status: "rascunho" | "publicado";
   publicado_em: string | null;
+  /** Resposta do produtor ao plano publicado (zera quando o técnico publica de novo) */
+  visto_em: string | null;
+  resposta: "combinado" | "duvida" | null;
+  duvida: string | null;
+  respondido_em: string | null;
   criado_em: string;
 }
 
