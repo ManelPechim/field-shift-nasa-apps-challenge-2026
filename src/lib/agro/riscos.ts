@@ -66,7 +66,7 @@ export function calcularRiscos(
 
   return {
     alagamento: { nivel: alagamento, motivo: motivoAlag, fonte: visita?.alagamento ? "Visita técnica" : "SRTM + NASA POWER" },
-    erosao: { nivel: erosao, motivo: motivoErosao + (visita?.erosao && visita.erosao !== "nenhuma" ? " Erosão observada na visita." : ""), fonte: relevo ? "SRTM + NASA POWER" : "NASA POWER" },
+    erosao: { nivel: erosao, motivo: motivoErosao + (visita?.erosao && visita.erosao !== "nenhuma" ? " Erosão observada na visita." : ""), fonte: (relevo ? "SRTM + NASA POWER" : "NASA POWER") + (visita?.erosao && visita.erosao !== "nenhuma" ? " + visita" : "") },
     geada: { nivel: geada, motivo: geadaAno ? `Em média ${f1(geadaAno)} dias por ano com mínima até 2 °C.` : "Sem mínimas abaixo de 2 °C no período.", fonte: "NASA POWER" },
     seca: { nivel: seca, motivo: `${mesesSecos} meses com menos de 50 mm; maior sequência sem chuva de ${clima.maior_estiagem_dias} dias por ano, em média.`, fonte: "NASA POWER" },
     calor: { nivel: calor, motivo: `Em média ${f1(calorAno)} dias por ano com máxima acima de 35 °C.`, fonte: "NASA POWER" },

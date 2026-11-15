@@ -28,6 +28,9 @@ export default async function PlanoDoProdutor(props: PageProps<"/produtor/planos
   const hoje = rotacaoPorId(t.rotacao_atual);
   const proposta = rotacaoPorId(plano.rotacao_id);
   const regiao = regiaoDe(t.centroide_lat ?? 0);
+  // Resumo das opções que o técnico comparou, guardado no plano quando ele foi montado
+  const dados = plano.dados as { opcoes?: { letra: string; id: string; nome: string; atual: boolean; combina: number; porque: string }[]; escolhida?: string; cenario?: string };
+  const opcoes = dados.opcoes ?? [];
 
   return (
     <Pagina>
@@ -66,8 +69,31 @@ export default async function PlanoDoProdutor(props: PageProps<"/produtor/planos
             {hoje && proposta && hoje.id === proposta.id && <p className="mt-2 text-sm text-muted">O técnico recomenda manter o que você já faz.</p>}
           </section>
 
+          {opcoes.length > 1 && (
+            <section>
+              <h2 className="h2 mb-1">2. O que mais foi comparado</h2>
+              <p className="mb-3 text-sm text-muted">O técnico comparou estas opções para o seu talhão, pelo clima de 20 anos da NASA, pelo relevo, pelo solo e pelo que você quer. A nota vai de 0 a 100 e mostra o quanto cada uma combina com as suas prioridades.</p>
+              <ul className="grid gap-2">
+                {opcoes.map((o) => {
+                  const escolhida = o.letra === dados.escolhida;
+                  return (
+                    <li key={o.id} className={`card grid grid-cols-[2.2rem_minmax(0,1fr)_auto] items-start gap-3 p-3 ${escolhida ? "border-brand ring-1 ring-brand" : ""}`}>
+                      <span className={`grid size-8 place-items-center rounded-lg font-display font-extrabold ${escolhida ? "bg-brand text-brand-ink" : "bg-surface-2"}`}>{o.letra}</span>
+                      <div className="min-w-0">
+                        <b className="leading-tight">{o.nome}</b>
+                        <span className="text-sm text-muted"> · {o.atual ? "o que você faz hoje" : escolhida ? "a escolhida" : "alternativa"}</span>
+                        <p className="text-sm text-muted">{o.porque}</p>
+                      </div>
+                      <b className={`font-display text-xl tabular-nums ${escolhida ? "text-brand" : ""}`}>{o.combina}</b>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+
           <section>
-            <h2 className="h2 mb-3">2. Por quê</h2>
+            <h2 className="h2 mb-3">{opcoes.length > 1 ? "3" : "2"}. Por quê</h2>
             {plano.resumo_produtor
               ? <p className="max-w-prose whitespace-pre-line rounded-2xl bg-surface p-4">{plano.resumo_produtor}</p>
               : <p className="text-sm text-muted">O técnico não escreveu uma explicação. Se quiser entender melhor, use “Tenho dúvida”.</p>}
@@ -75,13 +101,13 @@ export default async function PlanoDoProdutor(props: PageProps<"/produtor/planos
           </section>
 
           <section>
-            <h2 className="h2 mb-1">3. Quando</h2>
+            <h2 className="h2 mb-1">{opcoes.length > 1 ? "4" : "3"}. Quando</h2>
             <p className="mb-3 text-sm text-muted">O que fica plantado em cada mês, nos dois anos da rotação.</p>
             {proposta ? <CalendarioRotacao ocupacao={ocupacao(proposta, regiao)} /> : <p className="text-sm text-muted">Calendário indisponível.</p>}
           </section>
 
           <section id="tarefas" className="scroll-mt-24">
-            <h2 className="h2 mb-1">4. O que você precisa fazer</h2>
+            <h2 className="h2 mb-1">{opcoes.length > 1 ? "5" : "4"}. O que você precisa fazer</h2>
             <p className="mb-3 text-sm text-muted">Na ordem do plano: primeiro o que prepara o solo, depois os plantios.</p>
             {tarefas?.length ? (
               <ol className="grid gap-2">

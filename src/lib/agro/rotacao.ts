@@ -8,7 +8,7 @@ export const CRITERIOS = [
   ["solo", "Saúde do solo"],
   ["erosao", "Proteção contra erosão"],
   ["clima", "Segurança climática"],
-  ["renda", "Renda esperada"],
+  ["renda", "Potencial de renda (índice)"],
   ["agua", "Economia de água"],
   ["forragem", "Forragem para o gado"],
 ] as const;
@@ -149,7 +149,7 @@ export function porQue(av: Avaliacao, atual: Avaliacao, pri: Prioridades) {
     .slice(0, 2);
   if (!ds.length) return av.rotacao.ideia;
   const imp = ds.filter((d) => d.w >= 3).length;
-  return `${av.rotacao.ideia} Melhora ${lista(ds.map((d) => `${minus(d.n)} (+${Math.round(d.d)})`))}${imp ? `, prioridade${imp > 1 ? "s" : ""} marcada${imp > 1 ? "s" : ""} como muito importante${imp > 1 ? "s" : ""}` : ""}.`;
+  return `${av.rotacao.ideia} Melhora ${lista(ds.map((d) => `${minus(d.n.replace(" (índice)", ""))} (+${Math.round(d.d)})`))}${imp ? `, prioridade${imp > 1 ? "s" : ""} marcada${imp > 1 ? "s" : ""} como muito importante${imp > 1 ? "s" : ""}` : ""}.`;
 }
 
 export function evidencias(av: Avaliacao, R: Riscos) {

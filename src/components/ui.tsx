@@ -32,7 +32,7 @@ export function Logo() {
 
 export function Topo({ perfil, links }: { perfil: Perfil; links: { href: string; nome: string }[] }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-surface">
+    <header className="sticky top-0 z-20 border-b border-line bg-surface print:hidden">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2.5">
         <Link href={perfil.papel === "tecnico" ? "/tecnico" : "/produtor"} className="mr-auto flex items-center gap-2 no-underline">
           <Logo />

@@ -44,6 +44,9 @@ export function AbaPlano({ talhao, planos, tarefas, produtor }: { talhao: Talhao
     );
   }
   const rot = rotacaoPorId(plano.rotacao_id);
+  // O relatório abre com as prioridades e o cenário em que o plano foi decidido
+  const d = plano.dados as { cenario?: string; prioridades?: Record<string, number>; gado?: boolean; irrigacao?: boolean };
+  const busca = new URLSearchParams({ cenario: d.cenario ?? "normal", gado: d.gado ? "1" : "0", irrigacao: d.irrigacao ? "1" : "0", ...Object.fromEntries(Object.entries(d.prioridades ?? {}).map(([k, v]) => [k, String(v)])) });
   const minhas = tarefas.filter((t) => t.plano_id === plano.id || !t.plano_id);
 
   return (
@@ -53,7 +56,10 @@ export function AbaPlano({ talhao, planos, tarefas, produtor }: { talhao: Talhao
           <span className="eyebrow">Safra {plano.safra}</span>
           <Selo tom={plano.status === "publicado" ? "bom" : "atencao"}>{plano.status === "publicado" ? `Publicado em ${dataBR(plano.publicado_em)}` : "Rascunho: o produtor ainda não vê"}</Selo>
         </div>
-        <h2 className="font-display text-xl font-bold">{plano.rotacao_nome}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-display text-xl font-bold">{plano.rotacao_nome}</h2>
+          <Link href={`/tecnico/talhoes/${talhao.id}/relatorio?${busca}`} className="btn-ghost btn-sm no-underline">Relatório de decisão</Link>
+        </div>
         {plano.status === "publicado" && <SituacaoComProdutor plano={plano} talhao={talhao} produtor={produtor} />}
         {rot && <CalendarioRotacao ocupacao={ocupacao(rot, regiaoDe(talhao.centroide_lat!))} />}
         <form action={salvarPlano} className="grid gap-4">
