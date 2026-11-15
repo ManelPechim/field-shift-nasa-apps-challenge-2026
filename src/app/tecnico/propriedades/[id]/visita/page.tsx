@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Pagina } from "@/components/ui";
+import { Trilha } from "@/components/trilha";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { registrarVisita } from "@/app/tecnico/actions";
 
@@ -28,14 +28,19 @@ export default async function NovaVisita(props: PageProps<"/tecnico/propriedades
   const { talhao } = await props.searchParams;
   const { supabase } = await exigirPerfil("tecnico");
   const [{ data: p }, { data: talhoes }] = await Promise.all([
-    supabase.from("propriedades").select("id, nome").eq("id", id).maybeSingle(),
+    supabase.from("propriedades").select("id, nome, produtores(id, nome)").eq("id", id).maybeSingle<{ id: string; nome: string; produtores: { id: string; nome: string } }>(),
     supabase.from("talhoes").select("id, nome").eq("propriedade_id", id).order("criado_em"),
   ]);
   if (!p) notFound();
 
   return (
     <Pagina>
-      <Link href={`/tecnico/propriedades/${p.id}`} className="text-sm">← {p.nome}</Link>
+      <Trilha passos={[
+        { rotulo: "Clientes", href: "/tecnico" },
+        { rotulo: p.produtores.nome, href: `/tecnico/produtores/${p.produtores.id}` },
+        { rotulo: p.nome, tipo: "Propriedade", href: `/tecnico/propriedades/${p.id}` },
+        { rotulo: "Nova visita técnica" },
+      ]} />
       <h1 className="h1 mt-2 mb-1">Visita técnica</h1>
       <p className="mb-6 max-w-2xl text-muted">Registre o que você viu e ouviu. Alagamento e erosão observados aqui ajustam os riscos calculados com os dados da NASA. Preencha só o que souber.</p>
       <form action={registrarVisita} className="grid max-w-3xl gap-6">

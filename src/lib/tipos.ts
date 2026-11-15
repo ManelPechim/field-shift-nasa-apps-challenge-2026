@@ -51,6 +51,7 @@ export interface Talhao {
   centroide_lon: number | null;
   rotacao_atual: string | null;
   cultura_atual: string | null;
+  cor: string;
   criado_em: string;
 }
 

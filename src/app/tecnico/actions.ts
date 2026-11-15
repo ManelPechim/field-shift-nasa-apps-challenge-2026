@@ -138,6 +138,7 @@ export async function criarTalhao(form: FormData) {
       centroide_lat: lat,
       centroide_lon: lon,
       rotacao_atual: txt(form, "rotacao_atual"),
+      cor: /^#[0-9a-f]{6}$/i.test(String(form.get("cor"))) ? String(form.get("cor")).toLowerCase() : "#f2c94c",
     })
     .select("id")
     .single();

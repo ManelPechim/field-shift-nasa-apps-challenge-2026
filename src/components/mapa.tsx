@@ -8,13 +8,15 @@ import { useEffect, useRef, useState } from "react";
 import type { Feature, FeatureCollection, Polygon } from "geojson";
 import { BuscaLocal } from "./busca-local";
 import { CAMADAS_NASA, LegendaSobreMapa, SobreCamada, type ChaveCamada } from "./camadas-nasa";
+import { IconeCancelar, IconeConcluir, IconeDesenhar, IconeDesfazer, IconeRefazer } from "./icones";
 
 // O Turbopack não empacota o worker do MapLibre; o build copia o arquivo para /public (ver "prebuild").
 setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
-export interface TalhaoNoMapa { id: string; nome: string; geojson: Polygon }
-export interface Foco { lon: number; lat: number; zoom?: number; n: number }
-
+export const COR_PADRAO = "#f2c94c";
+export interface TalhaoNoMapa { id: string; nome: string; geojson: Polygon; cor?: string }
+/** Leva o mapa até um ponto (lon/lat/zoom) ou enquadra uma área (bbox: oeste, sul, leste, norte). Muda quando `n` muda. */
+export interface Foco { lon: number; lat: number; zoom?: number; bbox?: [number, number, number, number]; n: number }
 
 const ESTILO: StyleSpecification = {
   version: 8,
@@ -55,6 +57,8 @@ export function Mapa({
   aoMoverPonto,
   desenhar,
   rotuloDesenho = "Desenhar talhão",
+  corDesenho = "#4fc3f7",
+  destaque,
   busca = true,
   altura = "h-[420px]",
   camadaInicial,
@@ -73,6 +77,10 @@ export function Mapa({
   aoMoverPonto?: (lon: number, lat: number) => void;
   desenhar?: (poligono: Polygon | null, hectares: number) => void;
   rotuloDesenho?: string;
+  /** Cor do desenho em andamento */
+  corDesenho?: string;
+  /** Talhão realçado (linha mais grossa) */
+  destaque?: string | null;
   busca?: boolean;
   altura?: string;
   camadaInicial?: ChaveCamada;
@@ -105,14 +113,14 @@ export function Mapa({
       m.addLayer({ id: "limite-linha", type: "line", source: "limite", paint: { "line-color": "#ffffff", "line-width": 2.5, "line-dasharray": [2, 1.5] } });
       m.addSource("talhoes", {
         type: "geojson",
-        data: { type: "FeatureCollection", features: talhoes.map((t) => ({ type: "Feature", properties: { id: t.id, nome: t.nome }, geometry: t.geojson })) },
+        data: { type: "FeatureCollection", features: talhoes.map((t) => ({ type: "Feature", properties: { id: t.id, nome: t.nome, cor: t.cor ?? COR_PADRAO }, geometry: t.geojson })) },
       });
-      m.addLayer({ id: "talhoes-fill", type: "fill", source: "talhoes", paint: { "fill-color": "#f2c94c", "fill-opacity": 0.18 } });
-      m.addLayer({ id: "talhoes-linha", type: "line", source: "talhoes", paint: { "line-color": "#f2c94c", "line-width": 2.5 } });
+      m.addLayer({ id: "talhoes-fill", type: "fill", source: "talhoes", paint: { "fill-color": ["get", "cor"], "fill-opacity": 0.25 } });
+      m.addLayer({ id: "talhoes-linha", type: "line", source: "talhoes", paint: { "line-color": ["get", "cor"], "line-width": 2.5 } });
       m.addSource("rascunho", { type: "geojson", data: VAZIO });
-      m.addLayer({ id: "rascunho-fill", type: "fill", source: "rascunho", filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": "#4fc3f7", "fill-opacity": 0.25 } });
-      m.addLayer({ id: "rascunho-linha", type: "line", source: "rascunho", filter: ["!=", ["geometry-type"], "Point"], paint: { "line-color": "#4fc3f7", "line-width": 2.5 } });
-      m.addLayer({ id: "rascunho-pontos", type: "circle", source: "rascunho", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 5, "circle-color": "#ffffff", "circle-stroke-color": "#0277bd", "circle-stroke-width": 2 } });
+      m.addLayer({ id: "rascunho-fill", type: "fill", source: "rascunho", filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": corDesenho, "fill-opacity": 0.3 } });
+      m.addLayer({ id: "rascunho-linha", type: "line", source: "rascunho", filter: ["!=", ["geometry-type"], "Point"], paint: { "line-color": corDesenho, "line-width": 3 } });
+      m.addLayer({ id: "rascunho-pontos", type: "circle", source: "rascunho", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 5, "circle-color": "#ffffff", "circle-stroke-color": corDesenho, "circle-stroke-width": 2 } });
       if (pts.length > 1) {
         const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
         m.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: 50, maxZoom: 16, duration: 0 });
@@ -163,10 +171,30 @@ export function Mapa({
     } else marcador.current.setLngLat(ponto);
   }, [ponto]);
 
-  // Voar até o local buscado
+  // Voar até o local buscado ou enquadrar uma área
   useEffect(() => {
-    if (foco) mapa.current?.flyTo({ center: [foco.lon, foco.lat], zoom: foco.zoom ?? 15 });
+    if (!foco) return;
+    if (foco.bbox) mapa.current?.fitBounds([[foco.bbox[0], foco.bbox[1]], [foco.bbox[2], foco.bbox[3]]], { padding: 70, maxZoom: 17 });
+    else mapa.current?.flyTo({ center: [foco.lon, foco.lat], zoom: foco.zoom ?? 15 });
   }, [foco]);
+
+  // Talhão realçado
+  useEffect(() => {
+    const m = mapa.current;
+    if (!m || !pronto) return;
+    const id = destaque ?? "";
+    m.setPaintProperty("talhoes-linha", "line-width", ["case", ["==", ["get", "id"], id], 5, 2.5]);
+    m.setPaintProperty("talhoes-fill", "fill-opacity", ["case", ["==", ["get", "id"], id], 0.45, 0.25]);
+  }, [destaque, pronto]);
+
+  // Cor do desenho em andamento
+  useEffect(() => {
+    const m = mapa.current;
+    if (!m || !pronto) return;
+    m.setPaintProperty("rascunho-fill", "fill-color", corDesenho);
+    m.setPaintProperty("rascunho-linha", "line-color", corDesenho);
+    m.setPaintProperty("rascunho-pontos", "circle-stroke-color", corDesenho);
+  }, [corDesenho, pronto]);
 
   // Camada da NASA escolhida
   useEffect(() => {
@@ -210,6 +238,21 @@ export function Mapa({
   return (
     <div className="grid gap-2">
       {busca && <BuscaLocal aoEscolher={(l) => mapa.current?.flyTo({ center: [l.lon, l.lat], zoom: l.zoom })} />}
+      <div className={desenhar ? "grid gap-2 md:grid-cols-[170px_minmax(0,1fr)]" : ""}>
+      {desenhar && (
+        <div className="flex flex-wrap content-start gap-2 md:flex-col md:flex-nowrap" role="toolbar" aria-label="Ferramentas de desenho">
+          {!desenhando ? (
+            <button type="button" className="btn btn-sm justify-start" onClick={comecar}>{nPontos >= 3 ? <IconeRefazer /> : <IconeDesenhar />}{nPontos >= 3 ? "Desenhar de novo" : rotuloDesenho}</button>
+          ) : (
+            <>
+              <button type="button" className="btn btn-sm justify-start" onClick={concluir} disabled={nPontos < 3}><IconeConcluir />Concluir desenho</button>
+              <button type="button" className="btn-ghost btn-sm justify-start" onClick={desfazer} disabled={!nPontos}><IconeDesfazer />Desfazer ponto</button>
+              <button type="button" className="btn-ghost btn-sm justify-start" onClick={limpar}><IconeCancelar />Cancelar</button>
+              <p className="text-xs text-muted md:mt-1">{nPontos < 3 ? "Marque pelo menos 3 cantos no mapa." : "Toque em Concluir quando fechar a área."}</p>
+            </>
+          )}
+        </div>
+      )}
       <div className="relative">
         <div ref={div} className={`w-full overflow-hidden rounded-xl border border-line ${altura}`} />
         {desenhando && (
@@ -219,19 +262,7 @@ export function Mapa({
         )}
         {camada && <LegendaSobreMapa chave={camada} abaixo={desenhando} />}
       </div>
-      {desenhar && (
-        <div className="flex flex-wrap gap-2">
-          {!desenhando ? (
-            <button type="button" className="btn btn-sm" onClick={comecar}>{nPontos >= 3 ? "Desenhar de novo" : rotuloDesenho}</button>
-          ) : (
-            <>
-              <button type="button" className="btn btn-sm" onClick={concluir} disabled={nPontos < 3}>Concluir desenho</button>
-              <button type="button" className="btn-ghost btn-sm" onClick={desfazer} disabled={!nPontos}>Desfazer ponto</button>
-              <button type="button" className="btn-ghost btn-sm" onClick={limpar}>Cancelar</button>
-            </>
-          )}
-        </div>
-      )}
+      </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
         <label htmlFor="camada" className="font-semibold">Camada da NASA:</label>
         <select id="camada" className="input w-auto min-h-9 py-1" value={camada}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Pagina, num } from "@/components/ui";
+import { Trilha } from "@/components/trilha";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { dadosNasa } from "@/lib/dados";
 import { nomeRotacao, rotacaoPorId } from "@/lib/agro/culturas";
@@ -29,7 +30,7 @@ export default async function PaginaTalhao(props: PageProps<"/tecnico/talhoes/[i
   const { data: t } = await supabase.from("talhoes").select("*").eq("id", id).maybeSingle<Talhao>();
   if (!t) notFound();
   const [{ data: prop }, { data: visitas }, { data: amostras }, { data: planos }, { data: tarefas }, { data: ocorrencias }] = await Promise.all([
-    supabase.from("propriedades").select("*").eq("id", t.propriedade_id).single<Propriedade>(),
+    supabase.from("propriedades").select("*, produtores(id, nome)").eq("id", t.propriedade_id).single<Propriedade & { produtores: { id: string; nome: string } }>(),
     supabase.from("visitas").select("*").eq("propriedade_id", t.propriedade_id).or(`talhao_id.eq.${t.id},talhao_id.is.null`).order("data", { ascending: false }).returns<Visita[]>(),
     supabase.from("amostras").select("*").eq("talhao_id", t.id).order("criado_em", { ascending: false }).returns<Amostra[]>(),
     supabase.from("planos").select("*").eq("talhao_id", t.id).order("criado_em", { ascending: false }).returns<Plano[]>(),
@@ -44,7 +45,12 @@ export default async function PaginaTalhao(props: PageProps<"/tecnico/talhoes/[i
 
   return (
     <Pagina>
-      <Link href={`/tecnico/propriedades/${t.propriedade_id}`} className="text-sm">← {prop?.nome}</Link>
+      <Trilha passos={[
+        { rotulo: "Clientes", href: "/tecnico" },
+        { rotulo: prop?.produtores.nome ?? "Cliente", href: `/tecnico/produtores/${prop?.produtores.id}` },
+        { rotulo: prop?.nome ?? "Propriedade", tipo: "Propriedade", href: `/tecnico/propriedades/${t.propriedade_id}` },
+        { rotulo: t.nome, tipo: "Talhão" },
+      ]} />
       <div className="mt-2 mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <span className="eyebrow">{num(t.area_ha, 1)} ha · {num(t.centroide_lat, 4)}, {num(t.centroide_lon, 4)}</span>

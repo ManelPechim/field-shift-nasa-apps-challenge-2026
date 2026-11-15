@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Pagina, Selo, Vazio, dataBR, num } from "@/components/ui";
+import { Area, SeletorDeUnidade, UnidadeDeArea } from "@/components/area";
+import { BotaoCopiar } from "@/components/copiar";
+import { IconeRota } from "@/components/icones";
+import { Trilha } from "@/components/trilha";
+import { Pagina, Selo, Vazio, dataBR } from "@/components/ui";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { ROTACOES, nomeRotacao, rotacaoPorId } from "@/lib/agro/culturas";
 import { criarTalhao } from "@/app/tecnico/actions";
 import type { Propriedade, Talhao, Visita } from "@/lib/tipos";
-import { NovoTalhao } from "./novo-talhao";
+import { TalhoesDaPropriedade } from "./talhoes-da-propriedade";
 
 export default async function PaginaPropriedade(props: PageProps<"/tecnico/propriedades/[id]">) {
   const { id } = await props.params;
@@ -16,58 +20,77 @@ export default async function PaginaPropriedade(props: PageProps<"/tecnico/propr
     supabase.from("visitas").select("*").eq("propriedade_id", id).order("data", { ascending: false }).returns<Visita[]>(),
   ]);
   if (!p) notFound();
-  const haTalhoes = (talhoes ?? []).reduce((a, t) => a + (t.area_ha ?? 0), 0);
+  const lista = talhoes ?? [];
+  const somaTalhoes = lista.reduce((a, t) => a + (t.area_ha ?? 0), 0);
+  const ocupacao = p.area_ha && somaTalhoes ? Math.round((100 * somaTalhoes) / p.area_ha) : null;
+  const coordenadas = `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`;
+  const local = [p.municipio, p.uf].filter(Boolean).join(" - ");
 
   return (
     <Pagina>
-      <nav className="text-sm" aria-label="Caminho">
-        <Link href="/tecnico">Clientes</Link> <span className="text-muted">›</span> <Link href={`/tecnico/produtores/${p.produtores.id}`}>{p.produtores.nome}</Link>
-      </nav>
-      <div className="mt-2 mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <span className="eyebrow">{[p.municipio, p.uf].filter(Boolean).join(" - ") || "Propriedade"}{p.car_codigo ? ` · CAR ${p.car_codigo}` : ""}</span>
-          <h1 className="h1">{p.nome}</h1>
-          <p className="text-muted">de {p.produtores.nome}</p>
-        </div>
-        <Link href={`/tecnico/propriedades/${p.id}/visita`} className="btn">Registrar visita técnica</Link>
-      </div>
+      <Trilha passos={[
+        { rotulo: "Clientes", href: "/tecnico" },
+        { rotulo: p.produtores.nome, href: `/tecnico/produtores/${p.produtores.id}` },
+        { rotulo: p.nome, tipo: "Propriedade" },
+      ]} />
 
-      <dl className="mb-8 grid gap-2 text-sm sm:grid-cols-4">
-        <div className="card p-3"><dt className="text-muted">Endereço</dt><dd className="font-semibold">{p.endereco || "—"}</dd></div>
-        <div className="card p-3"><dt className="text-muted">Área da propriedade</dt><dd className="font-semibold">{p.area_ha ? `${num(p.area_ha, 1)} ha` : "Limite não desenhado"}</dd></div>
-        <div className="card p-3"><dt className="text-muted">Talhões</dt><dd className="font-semibold">{talhoes?.length ?? 0}{haTalhoes ? ` · ${num(haTalhoes, 1)} ha` : ""}</dd></div>
-        <div className="card p-3">
-          <dt className="text-muted">Local</dt>
-          <dd className="font-semibold"><a href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`} target="_blank" rel="noreferrer">Como chegar</a></dd>
-        </div>
-      </dl>
+      <UnidadeDeArea>
+        <header className="card mb-10 grid gap-5 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <span className="eyebrow">Propriedade</span>
+              <h1 className="h1">{p.nome}</h1>
+              <p className="text-muted">de <Link href={`/tecnico/produtores/${p.produtores.id}`}>{p.produtores.nome}</Link>{local ? ` · ${local}` : ""}</p>
+            </div>
+            <Link href={`/tecnico/propriedades/${p.id}/visita`} className="btn">Registrar visita técnica</Link>
+          </div>
 
-      <section className="mb-10">
-        <h2 className="h2 mb-1">Talhões</h2>
-        <p className="mb-3 text-sm text-muted">Desenhe cada talhão sobre a imagem. A linha branca tracejada é o limite da propriedade; o marcador vermelho, o local cadastrado. Toque num talhão para abrir.</p>
-        <NovoTalhao
+          <dl className="grid gap-4 border-t border-line pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid content-start gap-1">
+              <dt className="eyebrow">Endereço</dt>
+              <dd className="font-semibold">{p.endereco || "Sem endereço"}</dd>
+              {local && <dd>{local}</dd>}
+              <dd className="flex flex-wrap items-center gap-x-2 font-mono text-xs text-muted">Coordenadas: {coordenadas} <BotaoCopiar texto={coordenadas} /></dd>
+              <dd>
+                <a href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold">
+                  <IconeRota />Como chegar
+                </a>
+              </dd>
+            </div>
+            <div className="grid content-start gap-1">
+              <dt className="flex items-center justify-between gap-2"><span className="eyebrow">Área da propriedade</span><SeletorDeUnidade /></dt>
+              <dd className="font-display text-xl font-bold"><Area ha={p.area_ha} vazio="Limite não desenhado" /></dd>
+              <dd className="text-xs text-muted">ha = hectare: 10.000 m², um quadrado de 100 m × 100 m (um pouco maior que um campo de futebol).</dd>
+            </div>
+            <div className="grid content-start gap-1">
+              <dt className="eyebrow">Talhões</dt>
+              <dd className="font-display text-xl font-bold">{lista.length} {lista.length === 1 ? "talhão" : "talhões"}</dd>
+              {lista.length > 0 && <dd>Somam <b><Area ha={somaTalhoes} /></b>{ocupacao != null && <> · {ocupacao}% da propriedade</>}</dd>}
+              {lista.length > 1 && <dd className="text-xs text-muted">A área é a soma de todos os talhões desenhados.</dd>}
+            </div>
+            <div className="grid content-start gap-1">
+              <dt className="eyebrow">Cadastro e visitas</dt>
+              <dd>{p.car_codigo ? <>CAR: <span className="font-mono text-xs">{p.car_codigo}</span></> : "CAR não informado"}</dd>
+              <dd>Última visita: <b>{dataBR(visitas?.[0]?.data)}</b></dd>
+              {p.observacoes && <dd className="text-muted">{p.observacoes}</dd>}
+            </div>
+          </dl>
+        </header>
+
+        <TalhoesDaPropriedade
           propriedadeId={p.id}
-          talhoes={(talhoes ?? []).map((t) => ({ id: t.id, nome: t.nome, geojson: t.geojson }))}
+          talhoes={lista.map((t) => {
+            const r = rotacaoPorId(t.rotacao_atual);
+            return { id: t.id, nome: t.nome, geojson: t.geojson, area_ha: t.area_ha, cor: t.cor, rotacao: r ? nomeRotacao(r) : null };
+          })}
           limite={p.limite}
           ponto={[p.lon, p.lat]}
           rotacoes={ROTACOES.filter((r) => r.atual).map((r) => ({ id: r.id, nome: nomeRotacao(r), regiao: r.regiao }))}
           acao={criarTalhao}
         />
-        {!!talhoes?.length && (
-          <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {talhoes.map((t) => (
-              <li key={t.id}>
-                <Link href={`/tecnico/talhoes/${t.id}`} className="card block p-3 text-ink no-underline hover:border-brand">
-                  <b className="font-display">{t.nome}</b> <span className="text-sm text-muted">· {num(t.area_ha, 1)} ha</span>
-                  <p className="text-sm text-muted">{rotacaoPorId(t.rotacao_atual) ? nomeRotacao(rotacaoPorId(t.rotacao_atual)!) : "Rotação atual não informada"}</p>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      </UnidadeDeArea>
 
-      <section>
+      <section className="mt-10">
         <h2 className="h2 mb-3">Visitas técnicas</h2>
         {!visitas?.length ? (
           <Vazio titulo="Nenhuma visita registrada">A visita é onde entra o que o satélite não vê: alagamento, erosão, compactação, manejo e o que o produtor quer.</Vazio>
@@ -75,7 +98,7 @@ export default async function PaginaPropriedade(props: PageProps<"/tecnico/propr
           <ul className="grid gap-2">
             {visitas.map((v) => (
               <li key={v.id} className="card p-3">
-                <div className="flex flex-wrap items-center gap-2"><b>{dataBR(v.data)}</b>{v.objetivo && <span className="text-muted">· {v.objetivo}</span>}{v.talhao_id && <Selo tom="info">{talhoes?.find((t) => t.id === v.talhao_id)?.nome}</Selo>}</div>
+                <div className="flex flex-wrap items-center gap-2"><b>{dataBR(v.data)}</b>{v.objetivo && <span className="text-muted">· {v.objetivo}</span>}{v.talhao_id && <Selo tom="info">{lista.find((t) => t.id === v.talhao_id)?.nome}</Selo>}</div>
                 {v.observacoes && <p className="mt-1 text-sm">{v.observacoes}</p>}
               </li>
             ))}
