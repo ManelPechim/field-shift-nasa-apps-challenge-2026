@@ -43,7 +43,7 @@ export default async function TalhaoProdutor(props: PageProps<"/produtor/talhoes
           <span className="eyebrow">{num(t.area_ha, 1)} ha</span>
           <h1 className="h1 flex items-center gap-2.5"><span className="size-5 shrink-0 rounded-full border border-black/20" style={{ background: t.cor }} aria-hidden="true" />{t.nome}</h1>
         </div>
-        <Link href={`/produtor/relatar?talhao=${t.id}`} className="btn">Relatar algo deste talhão</Link>
+        <Link href={`/produtor/propriedades/${t.propriedades.id}/relatar?talhao=${t.id}`} className="btn">Relatar algo deste talhão</Link>
       </div>
       {relato === "ok" && <p role="status" className="mb-6 rounded-xl bg-ok-soft p-3 text-ok">Relato enviado. Seu técnico vai ver e responder aqui.</p>}
 

@@ -32,10 +32,12 @@ function Passo({ n, titulo, children }: { n: number; titulo: string; children: R
   );
 }
 
-export function FormularioRelato({ propriedades, talhoes, inicial }: {
+export function FormularioRelato({ propriedades, talhoes, inicial, propriedadeFixa = false }: {
   propriedades: PropriedadeRelato[];
   talhoes: TalhaoRelato[];
   inicial: { propriedade?: string; talhao?: string };
+  /** Aberto de dentro da propriedade: ela já está escolhida e o passo 1 some */
+  propriedadeFixa?: boolean;
 }) {
   const [estado, acao, enviando] = useActionState(relatar, undefined);
   const [propId, setPropId] = useState(inicial.propriedade ?? (propriedades.length === 1 ? propriedades[0].id : ""));
@@ -92,6 +94,7 @@ export function FormularioRelato({ propriedades, talhoes, inicial }: {
     setEscopo("talhao"); setTalhaoId(tocado.id); setMarcado({ lon, lat }); setAviso("");
   }
 
+  const p1 = propriedadeFixa ? 0 : 1;
   const descricaoLocal = marcado ? "Ponto que você marcou no mapa" : talhao ? "Centro do talhão" : "Local cadastrado da propriedade";
 
   return (
@@ -102,7 +105,7 @@ export function FormularioRelato({ propriedades, talhoes, inicial }: {
       <input type="hidden" name="lat" value={local?.lat ?? ""} />
       <input type="hidden" name="lon" value={local?.lon ?? ""} />
 
-      <Passo n={1} titulo="Em qual propriedade?">
+      {!propriedadeFixa && <Passo n={1} titulo="Em qual propriedade?">
         {propriedades.length === 1 ? (
           <p><b>{propriedades[0].nome}</b>{propriedades[0].local && <span className="text-muted"> · {propriedades[0].local}</span>}</p>
         ) : (
@@ -118,10 +121,10 @@ export function FormularioRelato({ propriedades, talhoes, inicial }: {
             ))}
           </div>
         )}
-      </Passo>
+      </Passo>}
 
       {prop && (
-        <Passo n={2} titulo="Onde aconteceu?">
+        <Passo n={p1 + 1} titulo={propriedadeFixa ? "Onde na propriedade aconteceu?" : "Onde aconteceu?"}>
           <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
             <div className="grid content-start gap-3">
               <fieldset className="grid gap-2">
@@ -178,13 +181,13 @@ export function FormularioRelato({ propriedades, talhoes, inicial }: {
 
             <Mapa key={prop.id} talhoes={daProp.map((t) => ({ id: t.id, nome: t.nome, geojson: t.geojson, cor: t.cor }))}
               limite={prop.limite} ponto={local ? [local.lon, local.lat] : null} foco={foco}
-              destaque={talhao?.id ?? null} aoTocar={tocarNoMapa} busca={false} altura="h-[380px]" />
+              destaque={talhao?.id ?? null} aoTocar={tocarNoMapa} busca={false} camadas={false} altura="h-[380px]" />
           </div>
         </Passo>
       )}
 
       {prop && (
-        <Passo n={3} titulo="O que aconteceu?">
+        <Passo n={p1 + 2} titulo="O que aconteceu?">
           <fieldset>
             <legend className="sr-only">Tipo do relato</legend>
             <div className="flex flex-wrap gap-2">
@@ -207,7 +210,7 @@ export function FormularioRelato({ propriedades, talhoes, inicial }: {
       )}
 
       {prop && (
-        <Passo n={4} titulo="Foto e detalhes">
+        <Passo n={p1 + 3} titulo="Foto e detalhes">
           <div className="grid gap-4 md:grid-cols-2">
             <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line p-5 text-center hover:border-brand">
               <input type="file" name="foto" accept="image/*" capture="environment" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; setPreview(f ? URL.createObjectURL(f) : null); }} />

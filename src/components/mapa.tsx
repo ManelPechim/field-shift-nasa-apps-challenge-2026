@@ -62,6 +62,7 @@ export function Mapa({
   busca = true,
   altura = "h-[420px]",
   camadaInicial,
+  camadas = true,
 }: {
   talhoes: TalhaoNoMapa[];
   hrefTalhao?: string;
@@ -84,6 +85,8 @@ export function Mapa({
   busca?: boolean;
   altura?: string;
   camadaInicial?: ChaveCamada;
+  /** false: só a imagem de satélite, sem o seletor de camadas da NASA */
+  camadas?: boolean;
 }) {
   const router = useRouter();
   const div = useRef<HTMLDivElement>(null);
@@ -267,7 +270,7 @@ export function Mapa({
         {camada && <LegendaSobreMapa chave={camada} abaixo={desenhando} />}
       </div>
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+      {camadas && <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
         <label htmlFor="camada" className="font-semibold">Camada da NASA:</label>
         <select id="camada" className="input w-auto min-h-9 py-1" value={camada}
           onChange={(e) => { const k = e.target.value as ChaveCamada | ""; setCamada(k); if (k) { setOpacidade(CAMADAS_NASA[k].opacidade); setExplicar(true); } }}>
@@ -285,8 +288,8 @@ export function Mapa({
         <button type="button" className="text-sm font-semibold text-brand underline" onClick={() => setExplicar(!explicar)} aria-expanded={explicar}>
           {explicar ? "Esconder explicação" : "O que é esta camada?"}
         </button>
-      </div>
-      {explicar && <SobreCamada chave={camada} data={data} />}
+      </div>}
+      {camadas && explicar && <SobreCamada chave={camada} data={data} />}
     </div>
   );
 }

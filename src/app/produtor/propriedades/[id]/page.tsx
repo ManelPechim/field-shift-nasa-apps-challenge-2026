@@ -59,7 +59,7 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
               <h1 className="h1">{p.nome}</h1>
               {local && <p className="text-muted">{local}</p>}
             </div>
-            <Link href={`/produtor/relatar?propriedade=${p.id}`} className="btn">Relatar algo desta propriedade</Link>
+            <Link href={`/produtor/propriedades/${p.id}/relatar`} className="btn">Relatar algo desta propriedade</Link>
           </div>
 
           <dl className="grid gap-4 border-t border-line pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
