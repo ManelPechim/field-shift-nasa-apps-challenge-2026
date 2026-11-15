@@ -4,9 +4,10 @@ import { useRef, useState } from "react";
 import type { Polygon } from "geojson";
 import { ListaDeTalhoes, bboxDe, type TalhaoDaLista } from "@/components/lista-talhoes";
 import { Mapa, type Foco } from "@/components/mapa";
+import type { PinoNoMapa } from "@/lib/pinos";
 
 /** Lista dos talhões e, logo abaixo, o mapa da propriedade (só visualização). */
-export function TalhoesEMapa({ talhoes, limite, ponto }: { talhoes: TalhaoDaLista[]; limite: Polygon | null; ponto: [number, number] }) {
+export function TalhoesEMapa({ talhoes, limite, ponto, pinos }: { talhoes: TalhaoDaLista[]; limite: Polygon | null; ponto: [number, number]; pinos: PinoNoMapa[] }) {
   const [foco, setFoco] = useState<Foco | null>(null);
   const [destaque, setDestaque] = useState<string | null>(null);
   const n = useRef(0);
@@ -35,7 +36,7 @@ export function TalhoesEMapa({ talhoes, limite, ponto }: { talhoes: TalhaoDaList
           Em “Camada da NASA” dá para ver como está a vegetação e a umidade do solo vistas do satélite.
         </p>
         <Mapa talhoes={talhoes.map((t) => ({ id: t.id, nome: t.nome, geojson: t.geojson, cor: t.cor }))} limite={limite} ponto={ponto}
-          hrefTalhao="/produtor/talhoes/" foco={foco} destaque={destaque} busca={false} altura="h-[460px]" />
+          hrefTalhao="/produtor/talhoes/" foco={foco} destaque={destaque} busca={false} altura="h-[460px]" pinos={pinos} />
       </section>
     </div>
   );

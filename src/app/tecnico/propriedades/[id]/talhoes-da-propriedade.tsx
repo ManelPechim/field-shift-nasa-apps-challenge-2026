@@ -6,9 +6,10 @@ import { Area } from "@/components/area";
 import { ListaDeTalhoes, bboxDe, type TalhaoDaLista } from "@/components/lista-talhoes";
 import { Mapa, type Foco } from "@/components/mapa";
 import { SeletorDeCor, corLivre } from "@/components/seletor-cor";
+import type { PinoNoMapa } from "@/lib/pinos";
 
 export function TalhoesDaPropriedade({
-  propriedadeId, talhoes, limite, ponto, rotacoes, acao,
+  propriedadeId, talhoes, limite, ponto, rotacoes, acao, pinos,
 }: {
   propriedadeId: string;
   talhoes: TalhaoDaLista[];
@@ -16,6 +17,7 @@ export function TalhoesDaPropriedade({
   ponto: [number, number];
   rotacoes: { id: string; nome: string; regiao: string }[];
   acao: (form: FormData) => Promise<void>;
+  pinos: PinoNoMapa[];
 }) {
   const usadas = new Set(talhoes.map((t) => t.cor.toLowerCase()));
   const [cor, setCor] = useState<string>(corLivre(usadas));
@@ -49,7 +51,7 @@ export function TalhoesDaPropriedade({
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
           <Mapa talhoes={talhoes.map((t) => ({ id: t.id, nome: t.nome, geojson: t.geojson, cor: t.cor }))} limite={limite} ponto={ponto}
             hrefTalhao="/tecnico/talhoes/" foco={foco} destaque={destaque} corDesenho={cor}
-            desenhar={(p, h) => { setPoligono(p); setHa(h); }} altura="h-[480px]" />
+            desenhar={(p, h) => { setPoligono(p); setHa(h); }} altura="h-[480px]" pinos={pinos} />
           <form action={acao} onSubmit={() => setSalvando(true)} className="card grid content-start gap-4 p-4">
             <input type="hidden" name="propriedade_id" value={propriedadeId} />
             <input type="hidden" name="geojson" value={poligono ? JSON.stringify(poligono) : ""} />

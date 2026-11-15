@@ -10,6 +10,7 @@ import { Pagina, dataBR } from "@/components/ui";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { dadosNasa } from "@/lib/dados";
 import { alertasDoClima } from "@/lib/alertas";
+import { pinosDosRelatos } from "@/lib/pinos";
 import type { Ocorrencia, Plano, Propriedade, Talhao, Tarefa, Visita } from "@/lib/tipos";
 import { TalhoesEMapa } from "./talhoes-e-mapa";
 
@@ -17,11 +18,12 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
   const { id } = await props.params;
   const { relato } = await props.searchParams;
   const { supabase } = await exigirPerfil("produtor");
-  const [{ data: p }, { data: talhoes }, { data: visitas }, { data: relatos }] = await Promise.all([
+  const [{ data: p }, { data: talhoes }, { data: visitas }, { data: relatos }, { data: todosRelatos }] = await Promise.all([
     supabase.from("propriedades").select("*").eq("id", id).maybeSingle<Propriedade>(),
     supabase.from("talhoes").select("*").eq("propriedade_id", id).order("criado_em").returns<Talhao[]>(),
     supabase.from("visitas").select("data").eq("propriedade_id", id).order("data", { ascending: false }).limit(1).returns<Pick<Visita, "data">[]>(),
     supabase.from("ocorrencias").select("*").eq("propriedade_id", id).is("talhao_id", null).order("criado_em", { ascending: false }).limit(10).returns<Ocorrencia[]>(),
+    supabase.from("ocorrencias").select("*").eq("propriedade_id", id).order("criado_em", { ascending: false }).limit(30).returns<Ocorrencia[]>(),
   ]);
   if (!p) notFound();
   const lista = talhoes ?? [];
@@ -119,6 +121,7 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
           })}
           limite={p.limite}
           ponto={[p.lon, p.lat]}
+          pinos={pinosDosRelatos(todosRelatos ?? [], nomeTalhao, (o) => (o.talhao_id ? `/produtor/talhoes/${o.talhao_id}` : `/produtor/propriedades/${p.id}#relatos`))}
         />
       </UnidadeDeArea>
 
@@ -129,7 +132,7 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
         </section>
       )}
 
-      <section className="mt-10">
+      <section id="relatos" className="mt-10 scroll-mt-24">
         <h2 className="h2 mb-1">Relatos da propriedade inteira</h2>
         <p className="mb-3 text-sm text-muted">Os relatos de um talhão ficam na página daquele talhão.</p>
         {relatos?.length ? <RelatosDoProdutor ocorrencias={relatos} /> : <p className="text-sm text-muted">Nada relatado para a propriedade inteira ainda.</p>}

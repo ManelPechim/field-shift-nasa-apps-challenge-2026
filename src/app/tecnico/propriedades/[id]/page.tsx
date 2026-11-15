@@ -7,6 +7,7 @@ import { RelatosParaResponder } from "@/components/relatos";
 import { Trilha } from "@/components/trilha";
 import { Pagina, Selo, Vazio, dataBR } from "@/components/ui";
 import { exigirPerfil } from "@/lib/supabase/server";
+import { pinosDosRelatos } from "@/lib/pinos";
 import { ROTACOES, nomeRotacao, rotacaoPorId } from "@/lib/agro/culturas";
 import { criarTalhao } from "@/app/tecnico/actions";
 import type { Ocorrencia, Propriedade, Talhao, Visita } from "@/lib/tipos";
@@ -16,11 +17,12 @@ export default async function PaginaPropriedade(props: PageProps<"/tecnico/propr
   const { id } = await props.params;
   const { excluido } = await props.searchParams;
   const { supabase } = await exigirPerfil("tecnico");
-  const [{ data: p }, { data: talhoes }, { data: visitas }, { data: relatos }] = await Promise.all([
+  const [{ data: p }, { data: talhoes }, { data: visitas }, { data: relatos }, { data: todosRelatos }] = await Promise.all([
     supabase.from("propriedades").select("*, produtores(id, nome)").eq("id", id).maybeSingle<Propriedade & { produtores: { id: string; nome: string } }>(),
     supabase.from("talhoes").select("*").eq("propriedade_id", id).order("criado_em").returns<Talhao[]>(),
     supabase.from("visitas").select("*").eq("propriedade_id", id).order("data", { ascending: false }).returns<Visita[]>(),
     supabase.from("ocorrencias").select("*").eq("propriedade_id", id).is("talhao_id", null).order("criado_em", { ascending: false }).returns<Ocorrencia[]>(),
+    supabase.from("ocorrencias").select("*").eq("propriedade_id", id).order("criado_em", { ascending: false }).limit(30).returns<Ocorrencia[]>(),
   ]);
   if (!p) notFound();
   const lista = talhoes ?? [];
@@ -92,6 +94,7 @@ export default async function PaginaPropriedade(props: PageProps<"/tecnico/propr
           ponto={[p.lon, p.lat]}
           rotacoes={ROTACOES.filter((r) => r.atual).map((r) => ({ id: r.id, nome: nomeRotacao(r), regiao: r.regiao }))}
           acao={criarTalhao}
+          pinos={pinosDosRelatos(todosRelatos ?? [], (tid) => lista.find((t) => t.id === tid)?.nome, (o) => (o.talhao_id ? `/tecnico/talhoes/${o.talhao_id}?aba=campo` : `/tecnico/propriedades/${p.id}#relatos`))}
         />
       </UnidadeDeArea>
 
