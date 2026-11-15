@@ -149,7 +149,10 @@ export function Mapa({
       if (desenhandoRef.current || !m.getLayer("talhoes-fill")) return;
       m.getCanvas().style.cursor = callbacks.current.aoTocar ? "crosshair" : hrefTalhao && m.queryRenderedFeatures(e.point, { layers: ["talhoes-fill"] }).length ? "pointer" : "";
     });
-    return () => m.remove();
+    // O mapa pode nascer numa coluna que ainda está se ajustando: acompanha o tamanho do contêiner
+    const tamanho = new ResizeObserver(() => m.resize());
+    tamanho.observe(div.current);
+    return () => { tamanho.disconnect(); m.remove(); };
     // O mapa é criado uma vez; o resto entra pelos efeitos abaixo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -173,10 +176,11 @@ export function Mapa({
 
   // Voar até o local buscado ou enquadrar uma área
   useEffect(() => {
-    if (!foco) return;
+    // Espera o mapa carregar: senão o enquadramento inicial (todos os talhões) sobrescreve o foco
+    if (!foco || !pronto) return;
     if (foco.bbox) mapa.current?.fitBounds([[foco.bbox[0], foco.bbox[1]], [foco.bbox[2], foco.bbox[3]]], { padding: 70, maxZoom: 17 });
     else mapa.current?.flyTo({ center: [foco.lon, foco.lat], zoom: foco.zoom ?? 15 });
-  }, [foco]);
+  }, [foco, pronto]);
 
   // Talhão realçado
   useEffect(() => {

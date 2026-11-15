@@ -292,6 +292,7 @@ export async function removerTarefa(form: FormData) {
 export async function responderOcorrencia(form: FormData) {
   const { supabase } = await exigirPerfil("tecnico");
   await supabase.from("ocorrencias").update({ status: txt(form, "status") ?? "vista", resposta_tecnico: txt(form, "resposta") }).eq("id", String(form.get("ocorrencia_id")));
-  revalidatePath(`/tecnico/talhoes/${String(form.get("talhao_id"))}`);
+  const voltar = String(form.get("voltar") ?? "");
+  if (voltar.startsWith("/tecnico/")) revalidatePath(voltar);
   revalidatePath("/tecnico");
 }

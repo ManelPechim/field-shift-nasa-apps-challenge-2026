@@ -6,6 +6,8 @@ import { Area } from "./area";
 import { IconeVerNoMapa } from "./icones";
 import { Selo } from "./ui";
 
+export { bboxDe } from "@/lib/geometria";
+
 export interface TalhaoDaLista {
   id: string;
   nome: string;
@@ -15,11 +17,6 @@ export interface TalhaoDaLista {
   /** Linha abaixo do nome: rotação (técnico) ou plano da safra (produtor) */
   descricao: string;
   pendentes?: number;
-}
-
-export function bboxDe(p: Polygon): [number, number, number, number] {
-  const xs = p.coordinates[0].map((c) => c[0]), ys = p.coordinates[0].map((c) => c[1]);
-  return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
 }
 
 /** Cartões dos talhões com a cor do mapa, "Ver no mapa" e "Abrir talhão". */

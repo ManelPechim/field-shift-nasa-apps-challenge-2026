@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CalendarioRotacao } from "@/components/graficos";
 import { TarefaProdutor } from "@/components/tarefa";
 import { Trilha } from "@/components/trilha";
+import { RelatosDoProdutor } from "@/components/relatos";
 import { Pagina, Selo, Vazio, dataBR, num } from "@/components/ui";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { regiaoDe, rotacaoPorId } from "@/lib/agro/culturas";
@@ -80,17 +81,7 @@ export default async function TalhaoProdutor(props: PageProps<"/produtor/talhoes
           ) : <Vazio titulo="Ainda sem análise de solo">Quando o técnico registrar o laudo, o resumo aparece aqui.</Vazio>}
 
           <h2 className="h2 mt-4">Seus relatos</h2>
-          {ocorrencias?.length ? (
-            <ul className="grid gap-2">
-              {ocorrencias.map((o) => (
-                <li key={o.id} className="card p-3">
-                  <div className="flex flex-wrap items-center gap-2"><b>{o.tipo}</b><span className="text-sm text-muted">{dataBR(o.criado_em)}</span><Selo tom={o.status === "resolvida" ? "bom" : o.status === "vista" ? "info" : "neutro"}>{o.status === "nova" ? "Enviado" : o.status === "vista" ? "Visto pelo técnico" : "Resolvido"}</Selo></div>
-                  {o.descricao && <p className="text-sm">{o.descricao}</p>}
-                  {o.resposta_tecnico && <p className="mt-1 rounded-md bg-sat-soft px-2 py-1 text-sm"><b>Técnico:</b> {o.resposta_tecnico}</p>}
-                </li>
-              ))}
-            </ul>
-          ) : <p className="text-sm text-muted">Nada relatado ainda.</p>}
+          {ocorrencias?.length ? <RelatosDoProdutor ocorrencias={ocorrencias} /> : <p className="text-sm text-muted">Nada relatado ainda.</p>}
         </section>
       </div>
     </Pagina>

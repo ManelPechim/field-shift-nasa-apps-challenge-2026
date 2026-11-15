@@ -40,3 +40,13 @@ Desligada no Supabase durante os testes, porque o envio de e-mail padrão só ch
 ## 7. Sem validação de senha e de celular no app (15/11/2026)
 
 Para não travar os testes, o app não exige tamanho mínimo de senha nem formato de celular. O celular só é limpo (ficam os dígitos; com DDD ganha o 55) para servir de login. Continua valendo o mínimo de **6 caracteres** do próprio Supabase, que não pode ser desligado. Antes de produção: voltar a validar o celular (DDD + número) e exigir uma senha mais forte.
+
+## 8. Relato da propriedade inteira ou de um talhão, com local tirado do mapa (15/11/2026)
+
+O produtor escolhe a propriedade e diz se o relato é da **propriedade inteira** (granizo, geada, enxurrada, seca, fogo: o que pega tudo) ou de **um talhão** (praga, doença, erosão, alagamento: o que acontece numa parte). No banco, `ocorrencias.propriedade_id` é obrigatório e `talhao_id` fica nulo no relato da propriedade inteira.
+
+Saiu o botão "Anexar minha localização" (GPS): ele anexava um ponto que o produtor não via e que podia nem ser da propriedade, se ele relatasse de casa ou da cidade. O local agora vem da escolha: centro do talhão ou ponto cadastrado da propriedade, mostrado na tela com as coordenadas. Para indicar o ponto exato da mancha, o produtor toca no mapa, e o toque só vale dentro da área escolhida.
+
+Praga, doença e planta daninha quase sempre começam em manchas. Quando o produtor escolhe uma delas para a propriedade inteira, o app sugere escolher o talhão onde viu primeiro, mas não obriga.
+
+Próximo passo possível: usar o GPS só como atalho para "estou aqui", aceito apenas se o ponto cair dentro da propriedade.

@@ -152,7 +152,9 @@ export interface Tarefa {
 
 export interface Ocorrencia {
   id: string;
-  talhao_id: string;
+  propriedade_id: string;
+  /** Nulo quando o relato é da propriedade inteira */
+  talhao_id: string | null;
   autor_id: string;
   tipo: string;
   descricao: string | null;

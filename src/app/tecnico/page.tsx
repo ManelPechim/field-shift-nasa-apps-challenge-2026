@@ -22,7 +22,7 @@ export default async function PainelTecnico(props: PageProps<"/tecnico">) {
   if (busca) consulta = consulta.ilike("nome", `%${busca}%`);
   const [{ data: clientes }, { data: ocorrencias }] = await Promise.all([
     consulta.returns<Linha[]>(),
-    supabase.from("ocorrencias").select("id, tipo, descricao, criado_em, talhao_id, talhoes(nome, propriedades(nome, produtores(nome)))").eq("status", "nova").order("criado_em", { ascending: false }).limit(10),
+    supabase.from("ocorrencias").select("id, tipo, descricao, criado_em, talhao_id, propriedade_id, talhoes(nome), propriedades(nome, produtores(nome))").eq("status", "nova").order("criado_em", { ascending: false }).limit(10),
   ]);
 
   return (
@@ -40,13 +40,14 @@ export default async function PainelTecnico(props: PageProps<"/tecnico">) {
           <h2 className="h2 mb-2">Relatos novos dos produtores</h2>
           <ul className="grid gap-2">
             {ocorrencias.map((o) => {
-              const t = o.talhoes as unknown as { nome: string; propriedades: { nome: string; produtores: { nome: string } } } | null;
+              const t = o.talhoes as unknown as { nome: string } | null;
+              const p = o.propriedades as unknown as { nome: string; produtores: { nome: string } } | null;
               return (
                 <li key={o.id}>
-                  <Link href={`/tecnico/talhoes/${o.talhao_id}?aba=campo`} className="card flex flex-wrap items-center gap-3 p-3 text-ink no-underline hover:border-brand">
+                  <Link href={o.talhao_id ? `/tecnico/talhoes/${o.talhao_id}?aba=campo` : `/tecnico/propriedades/${o.propriedade_id}#relatos`} className="card flex flex-wrap items-center gap-3 p-3 text-ink no-underline hover:border-brand">
                     <Selo tom="atencao">{o.tipo}</Selo>
                     <span className="min-w-0 flex-1 truncate">{o.descricao || "Sem descrição"}</span>
-                    <span className="text-sm text-muted">{t?.propriedades.produtores.nome} · {t?.propriedades.nome} · {t?.nome} · {dataBR(o.criado_em)}</span>
+                    <span className="text-sm text-muted">{p?.produtores.nome} · {p?.nome} · {t?.nome ?? "propriedade inteira"} · {dataBR(o.criado_em)}</span>
                   </Link>
                 </li>
               );

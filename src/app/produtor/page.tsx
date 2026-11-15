@@ -41,7 +41,7 @@ export default async function InicioProdutor() {
           <span className="eyebrow">Área do produtor</span>
           <h1 className="h1">Olá, {primeiroNome}</h1>
         </div>
-        {!!tIds.length && <Link href="/produtor/relatar" className="btn">Relatar algo da lavoura</Link>}
+        {!!props?.length && <Link href="/produtor/relatar" className="btn">Relatar algo na propriedade</Link>}
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -94,7 +94,7 @@ export default async function InicioProdutor() {
                   <a href={linkWhatsApp(tecnico.telefone, `Olá, ${tecnico.nome.split(" ")[0]}! Aqui é ${primeiroNome}, pelo Field Shift.`)} target="_blank" rel="noreferrer" className="btn btn-sm no-underline">Conversar no WhatsApp</a>
                 </>
               ) : <span className="text-sm text-muted">Celular não cadastrado.</span>}
-              <p className="text-xs text-muted">Para algo que aconteceu na lavoura, use “Relatar”: o relato fica guardado junto do talhão.</p>
+              <p className="text-xs text-muted">Para algo que aconteceu na lavoura, use “Relatar”: o relato fica guardado com o local, na propriedade ou no talhão.</p>
             </div>
           ) : <p className="text-sm text-muted">Nenhum técnico ligado à sua conta.</p>}
         </aside>

@@ -5,20 +5,23 @@ import { BotaoCopiar } from "@/components/copiar";
 import { IconeRota } from "@/components/icones";
 import { Trilha } from "@/components/trilha";
 import { TarefaProdutor } from "@/components/tarefa";
+import { RelatosDoProdutor } from "@/components/relatos";
 import { Pagina, dataBR } from "@/components/ui";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { dadosNasa } from "@/lib/dados";
 import { alertasDoClima } from "@/lib/alertas";
-import type { Plano, Propriedade, Talhao, Tarefa, Visita } from "@/lib/tipos";
+import type { Ocorrencia, Plano, Propriedade, Talhao, Tarefa, Visita } from "@/lib/tipos";
 import { TalhoesEMapa } from "./talhoes-e-mapa";
 
 export default async function PropriedadeProdutor(props: PageProps<"/produtor/propriedades/[id]">) {
   const { id } = await props.params;
+  const { relato } = await props.searchParams;
   const { supabase } = await exigirPerfil("produtor");
-  const [{ data: p }, { data: talhoes }, { data: visitas }] = await Promise.all([
+  const [{ data: p }, { data: talhoes }, { data: visitas }, { data: relatos }] = await Promise.all([
     supabase.from("propriedades").select("*").eq("id", id).maybeSingle<Propriedade>(),
     supabase.from("talhoes").select("*").eq("propriedade_id", id).order("criado_em").returns<Talhao[]>(),
     supabase.from("visitas").select("data").eq("propriedade_id", id).order("data", { ascending: false }).limit(1).returns<Pick<Visita, "data">[]>(),
+    supabase.from("ocorrencias").select("*").eq("propriedade_id", id).is("talhao_id", null).order("criado_em", { ascending: false }).limit(10).returns<Ocorrencia[]>(),
   ]);
   if (!p) notFound();
   const lista = talhoes ?? [];
@@ -46,6 +49,8 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
         { rotulo: p.nome, tipo: "Propriedade" },
       ]} />
 
+      {relato === "ok" && <p role="status" className="mb-4 rounded-xl bg-ok-soft p-3 text-ok">Relato da propriedade inteira enviado. Seu técnico vai ver e responder aqui.</p>}
+
       <UnidadeDeArea>
         <header className="card mb-10 grid gap-5 p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -54,7 +59,7 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
               <h1 className="h1">{p.nome}</h1>
               {local && <p className="text-muted">{local}</p>}
             </div>
-            {lista.length > 0 && <Link href={`/produtor/relatar?propriedade=${p.id}`} className="btn">Relatar algo desta propriedade</Link>}
+            <Link href={`/produtor/relatar?propriedade=${p.id}`} className="btn">Relatar algo desta propriedade</Link>
           </div>
 
           <dl className="grid gap-4 border-t border-line pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
@@ -123,6 +128,12 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
           <ul className="grid gap-3 lg:grid-cols-2">{tarefas.map((t) => <TarefaProdutor key={t.id} t={t} talhao={nomeTalhao(t.talhao_id)} />)}</ul>
         </section>
       )}
+
+      <section className="mt-10">
+        <h2 className="h2 mb-1">Relatos da propriedade inteira</h2>
+        <p className="mb-3 text-sm text-muted">Os relatos de um talhão ficam na página daquele talhão.</p>
+        {relatos?.length ? <RelatosDoProdutor ocorrencias={relatos} /> : <p className="text-sm text-muted">Nada relatado para a propriedade inteira ainda.</p>}
+      </section>
     </Pagina>
   );
 }
