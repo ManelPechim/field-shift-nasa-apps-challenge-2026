@@ -60,9 +60,9 @@ export const CAMADAS_NASA = {
       ],
       marcas: [{ valor: 0, rotulo: "0" }, { valor: 0.2, rotulo: "0,2" }, { valor: 0.4, rotulo: "0,4" }, { valor: 0.6, rotulo: "0,6" }, { valor: 0.8, rotulo: "0,8" }, { valor: 1, rotulo: "1" }],
       faixas: [
-        { ate: 0.2, texto: "Solo exposto, palhada seca, estrada ou cidade" },
-        { ate: 0.4, texto: "Pouca planta: lavoura nascendo, secando ou pasto ralo" },
-        { ate: 0.6, texto: "Lavoura ou pasto em crescimento" },
+        { ate: 0.3, texto: "Pouca ou nenhuma planta verde: solo exposto, palhada seca, estrada ou cidade" },
+        { ate: 0.5, texto: "Vegetação rala: lavoura nascendo ou secando, pasto ralo" },
+        { ate: 0.7, texto: "Lavoura ou pasto em crescimento" },
         { ate: 1, texto: "Vegetação densa: lavoura no auge ou mata" },
       ],
     },
@@ -133,11 +133,11 @@ function gradiente(e: Escala) {
 const pos = (e: Escala, v: number) => `${(100 * (v - e.min)) / (e.max - e.min)}%`;
 
 /** Legenda compacta, por cima do mapa. */
-export function LegendaSobreMapa({ chave }: { chave: ChaveCamada }) {
+export function LegendaSobreMapa({ chave, abaixo }: { chave: ChaveCamada; abaixo?: boolean }) {
   const c: Camada = CAMADAS_NASA[chave];
   const l = c.legenda;
   return (
-    <div className="pointer-events-none absolute bottom-2 left-2 z-10 w-[min(260px,calc(100%-1rem))] rounded-lg bg-black/70 px-2.5 py-2 text-[0.7rem] text-white">
+    <div className={`pointer-events-none absolute ${abaixo ? "top-10" : "top-2"} left-2 z-10 w-[min(260px,calc(100%-1rem))] rounded-lg bg-black/70 px-2.5 py-2 text-[0.7rem] text-white`}>
       <b className="mb-1 block text-xs">{c.curto}</b>
       {l.tipo === "escala" ? (
         <>

@@ -217,7 +217,7 @@ export function Mapa({
             Toque nos cantos, em volta da área. {nPontos} ponto{nPontos === 1 ? "" : "s"}.
           </div>
         )}
-        {camada && <LegendaSobreMapa chave={camada} />}
+        {camada && <LegendaSobreMapa chave={camada} abaixo={desenhando} />}
       </div>
       {desenhar && (
         <div className="flex flex-wrap gap-2">
