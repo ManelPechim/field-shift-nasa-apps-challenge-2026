@@ -11,6 +11,7 @@ import { AbaSolo } from "./aba-solo";
 import { AbaRotacoes } from "./aba-rotacoes";
 import { AbaPlano } from "./aba-plano";
 import { AbaCampo } from "./aba-campo";
+import { CabecalhoDoTalhao } from "./editar-talhao";
 
 const ABAS = [
   ["dados", "Dados da NASA"],
@@ -29,13 +30,14 @@ export default async function PaginaTalhao(props: PageProps<"/tecnico/talhoes/[i
 
   const { data: t } = await supabase.from("talhoes").select("*").eq("id", id).maybeSingle<Talhao>();
   if (!t) notFound();
-  const [{ data: prop }, { data: visitas }, { data: amostras }, { data: planos }, { data: tarefas }, { data: ocorrencias }] = await Promise.all([
+  const [{ data: prop }, { data: visitas }, { data: amostras }, { data: planos }, { data: tarefas }, { data: ocorrencias }, { data: vizinhos }] = await Promise.all([
     supabase.from("propriedades").select("*, produtores(id, nome)").eq("id", t.propriedade_id).single<Propriedade & { produtores: { id: string; nome: string } }>(),
     supabase.from("visitas").select("*").eq("propriedade_id", t.propriedade_id).or(`talhao_id.eq.${t.id},talhao_id.is.null`).order("data", { ascending: false }).returns<Visita[]>(),
     supabase.from("amostras").select("*").eq("talhao_id", t.id).order("criado_em", { ascending: false }).returns<Amostra[]>(),
     supabase.from("planos").select("*").eq("talhao_id", t.id).order("criado_em", { ascending: false }).returns<Plano[]>(),
     supabase.from("tarefas").select("*").eq("talhao_id", t.id).order("criado_em").returns<Tarefa[]>(),
     supabase.from("ocorrencias").select("*").eq("talhao_id", t.id).order("criado_em", { ascending: false }).returns<Ocorrencia[]>(),
+    supabase.from("talhoes").select("cor").eq("propriedade_id", t.propriedade_id).neq("id", t.id).returns<{ cor: string }[]>(),
   ]);
   const visita = visitas?.find((v) => v.talhao_id === t.id) ?? visitas?.[0] ?? null;
   const precisaNasa = aba === "dados" || aba === "rotacoes";
@@ -52,9 +54,9 @@ export default async function PaginaTalhao(props: PageProps<"/tecnico/talhoes/[i
         { rotulo: t.nome, tipo: "Talhão" },
       ]} />
       <div className="mt-2 mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <span className="eyebrow">{num(t.area_ha, 1)} ha · {num(t.centroide_lat, 4)}, {num(t.centroide_lon, 4)}</span>
-          <h1 className="h1">{t.nome}</h1>
+        <div className="min-w-0">
+          <CabecalhoDoTalhao id={t.id} nome={t.nome} cor={t.cor} usadas={(vizinhos ?? []).map((v) => v.cor.toLowerCase())}
+            detalhes={<span className="eyebrow">{num(t.area_ha, 1)} ha · {num(t.centroide_lat, 4)}, {num(t.centroide_lon, 4)}</span>} />
           <p className="text-muted">Hoje: {rotAtual ? nomeRotacao(rotAtual) : "rotação não informada"}</p>
         </div>
         <Link href={`/tecnico/propriedades/${t.propriedade_id}/visita?talhao=${t.id}`} className="btn-ghost btn-sm">Registrar visita</Link>

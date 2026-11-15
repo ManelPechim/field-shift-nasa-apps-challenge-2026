@@ -5,12 +5,7 @@ import type { Polygon } from "geojson";
 import { Area } from "@/components/area";
 import { ListaDeTalhoes, bboxDe, type TalhaoDaLista } from "@/components/lista-talhoes";
 import { Mapa, type Foco } from "@/components/mapa";
-
-/** Cores que aparecem bem sobre a imagem de satélite */
-const PALETA = [
-  ["#f2c94c", "Amarelo"], ["#ff8a3d", "Laranja"], ["#ef4444", "Vermelho"], ["#ec4899", "Rosa"], ["#a855f7", "Roxo"],
-  ["#38bdf8", "Azul"], ["#22d3ee", "Ciano"], ["#a3e635", "Verde-limão"], ["#ffffff", "Branco"],
-] as const;
+import { SeletorDeCor, corLivre } from "@/components/seletor-cor";
 
 export function TalhoesDaPropriedade({
   propriedadeId, talhoes, limite, ponto, rotacoes, acao,
@@ -23,7 +18,7 @@ export function TalhoesDaPropriedade({
   acao: (form: FormData) => Promise<void>;
 }) {
   const usadas = new Set(talhoes.map((t) => t.cor.toLowerCase()));
-  const [cor, setCor] = useState<string>(PALETA.find(([c]) => !usadas.has(c))?.[0] ?? PALETA[0][0]);
+  const [cor, setCor] = useState<string>(corLivre(usadas));
   const [poligono, setPoligono] = useState<Polygon | null>(null);
   const [ha, setHa] = useState(0);
   const [salvando, setSalvando] = useState(false);
@@ -63,23 +58,10 @@ export function TalhoesDaPropriedade({
               {poligono ? <>Área desenhada: <b><Area ha={ha} /></b></> : "Nenhum talhão desenhado ainda."}
             </div>
             <div><label className="label" htmlFor="nome">Nome do talhão</label><input className="input" id="nome" name="nome" required placeholder="Talhão da baixada" /></div>
-            <fieldset>
-              <legend className="label">Cor no mapa</legend>
-              <div className="flex flex-wrap items-center gap-2">
-                {PALETA.map(([c, nome]) => (
-                  <label key={c} className="cursor-pointer" title={nome + (usadas.has(c) ? " (já usada)" : "")}>
-                    <input type="radio" name="cor_opcao" value={c} checked={cor === c} onChange={() => setCor(c)} className="peer sr-only" />
-                    <span className="block size-7 rounded-full border-2 border-black/15 ring-offset-2 ring-offset-surface peer-checked:ring-2 peer-checked:ring-ink peer-focus-visible:outline-2 peer-focus-visible:outline-sat" style={{ background: c }} />
-                    <span className="sr-only">{nome}</span>
-                  </label>
-                ))}
-                <label className="flex items-center gap-1 text-xs text-muted" title="Outra cor">
-                  <input type="color" value={cor} onChange={(e) => setCor(e.target.value)} className="size-7 cursor-pointer rounded border border-line bg-transparent p-0" aria-label="Escolher outra cor" />
-                  outra
-                </label>
-              </div>
-              <p className="mt-1 text-xs text-muted">A área desenhada já aparece nessa cor. Prefira uma cor diferente da dos outros talhões.</p>
-            </fieldset>
+            <div>
+              <SeletorDeCor cor={cor} aoMudar={setCor} usadas={usadas} />
+              <p className="mt-1 text-xs text-muted">A área desenhada já aparece nessa cor.</p>
+            </div>
             <div>
               <label className="label" htmlFor="rotacao_atual">O que se planta hoje</label>
               <select className="input" id="rotacao_atual" name="rotacao_atual" defaultValue="">

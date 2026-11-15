@@ -146,11 +146,21 @@ export async function criarTalhao(form: FormData) {
   redirect(`/tecnico/talhoes/${data.id}`);
 }
 
-export async function editarTalhao(form: FormData) {
+export type EstadoEdicaoTalhao = { erro?: string; ok?: boolean } | undefined;
+
+export async function editarTalhao(_: EstadoEdicaoTalhao, form: FormData): Promise<EstadoEdicaoTalhao> {
   const { supabase } = await exigirPerfil("tecnico");
   const id = String(form.get("talhao_id"));
-  await supabase.from("talhoes").update({ nome: txt(form, "nome") ?? "Talhão", rotacao_atual: txt(form, "rotacao_atual") }).eq("id", id);
+  const nome = txt(form, "nome");
+  const cor = String(form.get("cor") ?? "").toLowerCase();
+  if (!nome) return { erro: "Dê um nome ao talhão." };
+  if (!/^#[0-9a-f]{6}$/.test(cor)) return { erro: "Escolha uma cor." };
+  const { data, error } = await supabase.from("talhoes").update({ nome, cor }).eq("id", id).select("propriedade_id").maybeSingle();
+  if (error) return { erro: `Não foi possível salvar: ${error.message}` };
+  if (!data) return { erro: "Talhão não encontrado." };
   revalidatePath(`/tecnico/talhoes/${id}`);
+  revalidatePath(`/tecnico/propriedades/${data.propriedade_id}`);
+  return { ok: true };
 }
 
 export async function registrarVisita(form: FormData) {
