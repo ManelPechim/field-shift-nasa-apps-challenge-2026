@@ -8,10 +8,13 @@ import { Trilha } from "@/components/trilha";
 import { Pagina, Selo, Vazio, dataBR } from "@/components/ui";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { pinosDosRelatos } from "@/lib/pinos";
-import { ROTACOES, nomeRotacao, rotacaoPorId } from "@/lib/agro/culturas";
+import { ROTACOES, nomeRotacao, regiaoDe, rotacaoPorId } from "@/lib/agro/culturas";
 import { criarTalhao } from "@/app/tecnico/actions";
 import type { Ocorrencia, Propriedade, Talhao, Visita } from "@/lib/tipos";
 import { TalhoesDaPropriedade } from "./talhoes-da-propriedade";
+
+type Contagem = { count: number }[];
+type TalhaoComContagens = Talhao & { amostras: Contagem; planos: Contagem; tarefas: Contagem; ocorrencias: Contagem };
 
 export default async function PaginaPropriedade(props: PageProps<"/tecnico/propriedades/[id]">) {
   const { id } = await props.params;
@@ -19,7 +22,8 @@ export default async function PaginaPropriedade(props: PageProps<"/tecnico/propr
   const { supabase } = await exigirPerfil("tecnico");
   const [{ data: p }, { data: talhoes }, { data: visitas }, { data: relatos }, { data: todosRelatos }] = await Promise.all([
     supabase.from("propriedades").select("*, produtores(id, nome)").eq("id", id).maybeSingle<Propriedade & { produtores: { id: string; nome: string } }>(),
-    supabase.from("talhoes").select("*").eq("propriedade_id", id).order("criado_em").returns<Talhao[]>(),
+    // Contagens: o modal de edição diz o que sai junto se o talhão for excluído
+    supabase.from("talhoes").select("*, amostras(count), planos(count), tarefas(count), ocorrencias(count)").eq("propriedade_id", id).order("criado_em").returns<TalhaoComContagens[]>(),
     supabase.from("visitas").select("*").eq("propriedade_id", id).order("data", { ascending: false }).returns<Visita[]>(),
     supabase.from("ocorrencias").select("*").eq("propriedade_id", id).is("talhao_id", null).order("criado_em", { ascending: false }).returns<Ocorrencia[]>(),
     supabase.from("ocorrencias").select("*").eq("propriedade_id", id).order("criado_em", { ascending: false }).limit(30).returns<Ocorrencia[]>(),
@@ -94,6 +98,13 @@ export default async function PaginaPropriedade(props: PageProps<"/tecnico/propr
           ponto={[p.lon, p.lat]}
           rotacoes={ROTACOES.filter((r) => r.atual).map((r) => ({ id: r.id, nome: nomeRotacao(r), regiao: r.regiao }))}
           acao={criarTalhao}
+          edicao={Object.fromEntries(lista.map((t) => [t.id, {
+            id: t.id, nome: t.nome, cor: t.cor, rotacaoAtual: t.rotacao_atual, areaHa: t.area_ha, geojson: t.geojson,
+            vizinhos: lista.filter((x) => x.id !== t.id).map((x) => ({ id: x.id, nome: x.nome, geojson: x.geojson, cor: x.cor })),
+            limite: p.limite, ponto: [p.lon, p.lat] as [number, number],
+            rotacoes: ROTACOES.filter((r) => r.atual && r.regiao === regiaoDe(t.centroide_lat ?? p.lat)).map((r) => ({ id: r.id, nome: nomeRotacao(r) })),
+            vinculos: { amostras: t.amostras[0]?.count ?? 0, planos: t.planos[0]?.count ?? 0, tarefas: t.tarefas[0]?.count ?? 0, relatos: t.ocorrencias[0]?.count ?? 0 },
+          }]))}
           pinos={pinosDosRelatos(todosRelatos ?? [], (tid) => lista.find((t) => t.id === tid)?.nome, (o) => (o.talhao_id ? `/tecnico/talhoes/${o.talhao_id}?aba=campo` : `/tecnico/propriedades/${p.id}#relatos`))}
         />
       </UnidadeDeArea>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Pagina, num } from "@/components/ui";
 import { Trilha } from "@/components/trilha";
+import { EditarTalhao } from "@/components/editar-talhao";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { dadosNasa } from "@/lib/dados";
 import { ROTACOES, nomeRotacao, regiaoDe, rotacaoPorId } from "@/lib/agro/culturas";
@@ -11,7 +12,6 @@ import { AbaSolo } from "./aba-solo";
 import { AbaRotacoes } from "./aba-rotacoes";
 import { AbaPlano } from "./aba-plano";
 import { AbaCampo } from "./aba-campo";
-import { CabecalhoDoTalhao } from "./editar-talhao";
 
 const ABAS = [
   ["dados", "Dados da NASA"],
@@ -54,16 +54,22 @@ export default async function PaginaTalhao(props: PageProps<"/tecnico/talhoes/[i
         { rotulo: t.nome, tipo: "Talhão" },
       ]} />
       <div className="mt-2 mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <CabecalhoDoTalhao
-            dados={{
+        <div className="min-w-0">
+          <span className="eyebrow">{num(t.area_ha, 1)} ha · {num(t.centroide_lat, 4)}, {num(t.centroide_lon, 4)}</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h1 className="h1 flex items-center gap-2.5">
+              <span className="size-5 shrink-0 rounded-full border border-black/20" style={{ background: t.cor }} aria-hidden="true" />
+              {t.nome}
+            </h1>
+            <EditarTalhao
+              dados={{
               id: t.id, nome: t.nome, cor: t.cor, rotacaoAtual: t.rotacao_atual, areaHa: t.area_ha, geojson: t.geojson,
               vizinhos: vizinhos ?? [], limite: prop?.limite ?? null, ponto: [prop?.lon ?? t.centroide_lon ?? 0, prop?.lat ?? t.centroide_lat ?? 0],
               rotacoes: ROTACOES.filter((r) => r.atual && r.regiao === regiaoDe(t.centroide_lat ?? prop?.lat ?? 0)).map((r) => ({ id: r.id, nome: nomeRotacao(r) })),
               vinculos: { amostras: amostras?.length ?? 0, planos: planos?.length ?? 0, tarefas: tarefas?.length ?? 0, relatos: ocorrencias?.length ?? 0 },
-            }}
-            detalhes={<span className="eyebrow">{num(t.area_ha, 1)} ha · {num(t.centroide_lat, 4)}, {num(t.centroide_lon, 4)}</span>}
-            rotacaoTexto={rotAtual ? nomeRotacao(rotAtual) : "rotação não informada"} />
+              }} />
+          </div>
+          <p className="text-muted">Hoje: {rotAtual ? nomeRotacao(rotAtual) : "rotação não informada"}</p>
         </div>
         <Link href={`/tecnico/propriedades/${t.propriedade_id}/visita?talhao=${t.id}`} className="btn-ghost btn-sm">Registrar visita</Link>
       </div>

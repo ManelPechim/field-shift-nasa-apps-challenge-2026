@@ -132,13 +132,6 @@ export function Mapa({
         const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
         m.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: 50, maxZoom: 16, duration: 0 });
       }
-      for (const t of talhoes) {
-        const anel = t.geojson.coordinates[0];
-        const el = document.createElement("div");
-        el.textContent = t.nome;
-        el.className = "rounded-md bg-black/70 px-1.5 py-0.5 text-xs font-semibold text-white pointer-events-none";
-        new Marker({ element: el }).setLngLat([anel.reduce((a, p) => a + p[0], 0) / anel.length, anel.reduce((a, p) => a + p[1], 0) / anel.length]).addTo(m);
-      }
       setPronto(true);
     });
     m.on("click", (e: MapMouseEvent) => {
@@ -191,6 +184,26 @@ export function Mapa({
     if (foco.bbox) mapa.current?.fitBounds([[foco.bbox[0], foco.bbox[1]], [foco.bbox[2], foco.bbox[3]]], { padding: 70, maxZoom: 17 });
     else mapa.current?.flyTo({ center: [foco.lon, foco.lat], zoom: foco.zoom ?? 15 });
   }, [foco, pronto]);
+
+  // Talhões e seus nomes acompanham a prop: editar nome, cor ou contorno atualiza o mapa sem recriá-lo
+  const chaveTalhoes = JSON.stringify(talhoes);
+  useEffect(() => {
+    const m = mapa.current;
+    if (!m || !pronto) return;
+    const lista = JSON.parse(chaveTalhoes) as TalhaoNoMapa[];
+    (m.getSource("talhoes") as GeoJSONSource | undefined)?.setData({
+      type: "FeatureCollection",
+      features: lista.map((t) => ({ type: "Feature", properties: { id: t.id, nome: t.nome, cor: t.cor ?? COR_PADRAO }, geometry: t.geojson })),
+    });
+    const rotulos = lista.map((t) => {
+      const anel = t.geojson.coordinates[0];
+      const el = document.createElement("div");
+      el.textContent = t.nome;
+      el.className = "rounded-md bg-black/70 px-1.5 py-0.5 text-xs font-semibold text-white pointer-events-none";
+      return new Marker({ element: el }).setLngLat([anel.reduce((a, p) => a + p[0], 0) / anel.length, anel.reduce((a, p) => a + p[1], 0) / anel.length]).addTo(m);
+    });
+    return () => rotulos.forEach((r) => r.remove());
+  }, [chaveTalhoes, pronto]);
 
   // Pinos (relatos): um link por pino, que leva ao relato
   const chavePinos = JSON.stringify(pinos ?? []);

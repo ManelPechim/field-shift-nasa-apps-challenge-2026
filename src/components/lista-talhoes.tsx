@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { Polygon } from "geojson";
 import { Area } from "./area";
 import { IconeVerNoMapa } from "./icones";
@@ -21,13 +22,15 @@ export interface TalhaoDaLista {
 
 /** Cartões dos talhões com a cor do mapa, "Ver no mapa" e "Abrir talhão". */
 export function ListaDeTalhoes({
-  talhoes, destaque, aoVerNoMapa, hrefTalhao, vazio,
+  talhoes, destaque, aoVerNoMapa, hrefTalhao, vazio, acoes,
 }: {
   talhoes: TalhaoDaLista[];
   destaque: string | null;
   aoVerNoMapa: (t: TalhaoDaLista) => void;
   hrefTalhao: string;
   vazio: string;
+  /** Botões a mais no card (ex.: "Editar", só para o técnico) */
+  acoes?: (t: TalhaoDaLista) => ReactNode;
 }) {
   if (!talhoes.length) {
     return <div className="rounded-2xl border border-dashed border-line bg-surface-2 p-5 text-center text-sm text-muted">{vazio}</div>;
@@ -47,6 +50,7 @@ export function ListaDeTalhoes({
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn-ghost btn-sm" onClick={() => aoVerNoMapa(t)}><IconeVerNoMapa />Ver no mapa</button>
             <Link href={`${hrefTalhao}${t.id}`} className="btn btn-sm no-underline">Abrir talhão</Link>
+            {acoes?.(t)}
           </div>
         </li>
       ))}

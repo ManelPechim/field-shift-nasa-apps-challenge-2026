@@ -7,9 +7,10 @@ import { ListaDeTalhoes, bboxDe, type TalhaoDaLista } from "@/components/lista-t
 import { Mapa, type Foco } from "@/components/mapa";
 import { SeletorDeCor, corLivre } from "@/components/seletor-cor";
 import type { PinoNoMapa } from "@/lib/pinos";
+import { EditarTalhao, type DadosDaEdicao } from "@/components/editar-talhao";
 
 export function TalhoesDaPropriedade({
-  propriedadeId, talhoes, limite, ponto, rotacoes, acao, pinos,
+  propriedadeId, talhoes, limite, ponto, rotacoes, acao, pinos, edicao,
 }: {
   propriedadeId: string;
   talhoes: TalhaoDaLista[];
@@ -18,6 +19,8 @@ export function TalhoesDaPropriedade({
   rotacoes: { id: string; nome: string; regiao: string }[];
   acao: (form: FormData) => Promise<void>;
   pinos: PinoNoMapa[];
+  /** Dados do modal de edição de cada talhão, por id */
+  edicao: Record<string, DadosDaEdicao>;
 }) {
   const usadas = new Set(talhoes.map((t) => t.cor.toLowerCase()));
   const [cor, setCor] = useState<string>(corLivre(usadas));
@@ -42,7 +45,8 @@ export function TalhoesDaPropriedade({
       <section>
         <h2 className="h2 mb-3">Talhões cadastrados {talhoes.length > 0 && <span className="font-normal text-muted">({talhoes.length})</span>}</h2>
         <ListaDeTalhoes talhoes={talhoes} destaque={destaque} aoVerNoMapa={verNoMapa} hrefTalhao="/tecnico/talhoes/"
-          vazio="Nenhum talhão ainda. Desenhe o primeiro no mapa abaixo." />
+          vazio="Nenhum talhão ainda. Desenhe o primeiro no mapa abaixo."
+          acoes={(t) => edicao[t.id] && <EditarTalhao dados={edicao[t.id]} rotulo="Editar" />} />
       </section>
 
       <section ref={areaMapa} className="scroll-mt-24">
