@@ -51,15 +51,15 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
   const nomeTalhao = (tid: string) => lista.find((t) => t.id === tid)?.nome;
   // Em destaque no topo: planos sem resposta e dúvidas que o técnico já respondeu (a vez é do produtor)
   const semResposta = (planos ?? []).filter((x) => !x.resposta || (x.resposta === "duvida" && x.resposta_tecnico));
-  // Única propriedade: o início redireciona para cá, então a trilha não volta para a lista
+  // Única propriedade: o login abre direto aqui, então o cabeçalho cumprimenta o produtor
   const unica = nPropriedades === 1;
 
   return (
     <Pagina>
-      {!unica && <Trilha passos={[
+      <Trilha passos={[
         { rotulo: "Suas propriedades", href: "/produtor" },
         { rotulo: p.nome, tipo: "Propriedade" },
-      ]} />}
+      ]} />
 
       {relato === "ok" && <p role="status" className="mb-4 rounded-xl bg-ok-soft p-3 text-ok">Relato da propriedade inteira enviado. Seu técnico vai ver e responder aqui.</p>}
 

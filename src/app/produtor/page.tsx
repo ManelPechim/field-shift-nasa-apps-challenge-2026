@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Pagina, Selo, Vazio, num } from "@/components/ui";
 import { TarefaProdutor } from "@/components/tarefa";
 import { exigirPerfil } from "@/lib/supabase/server";
@@ -15,8 +14,6 @@ export default async function InicioProdutor() {
     supabase.from("propriedades").select("*").order("criado_em").returns<Propriedade[]>(),
     tecnicoDoProdutor(supabase, perfil.id),
   ]);
-  // Com uma propriedade só, a lista não ajuda: vai direto para ela (lá estão tarefas, tempo e o contato do técnico)
-  if (props?.length === 1) redirect(`/produtor/propriedades/${props[0].id}`);
   const primeiroNome = perfil.nome.split(" ")[0];
 
   const ids = (props ?? []).map((p) => p.id);

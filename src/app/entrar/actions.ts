@@ -12,7 +12,10 @@ async function destino() {
   const { data } = await supabase.auth.getUser();
   if (!data.user) return "/entrar";
   const { data: perfil } = await supabase.from("perfis").select("papel").eq("id", data.user.id).single();
-  return perfil?.papel === "tecnico" ? "/tecnico" : "/produtor";
+  if (perfil?.papel === "tecnico") return "/tecnico";
+  // Produtor com uma propriedade só entra direto nela; a lista (/produtor) continua acessível pelo Início
+  const { data: props } = await supabase.from("propriedades").select("id").limit(2);
+  return props?.length === 1 ? `/produtor/propriedades/${props[0].id}` : "/produtor";
 }
 
 /** Login com e-mail ou celular. O celular é trocado pelo e-mail da conta no servidor. */
