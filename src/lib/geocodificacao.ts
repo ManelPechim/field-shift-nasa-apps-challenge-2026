@@ -32,7 +32,9 @@ export async function enderecoDoPonto(lat: number, lon: number): Promise<Enderec
   const uf = (a["ISO3166-2-lvl4"] ?? "").replace(/^BR-/, "") || null;
   const local = a.hamlet ?? a.village ?? a.suburb ?? a.neighbourhood ?? a.quarter ?? a.isolated_dwelling ?? null;
   const endereco = [a.road, local !== municipio ? local : null, a.postcode].filter(Boolean).join(", ") || null;
-  const nome = x.name && !GENERICOS.has(x.addresstype ?? "") ? x.name : null;
+  // Só aceita nome de lugar (fazenda, sítio, sede…), nunca de rua ou estrada
+  const categoria = x.category ?? x.class ?? "";
+  const nome = x.name && !GENERICOS.has(x.addresstype ?? "") && categoria !== "highway" && x.name !== a.road ? x.name : null;
   return { municipio, uf, endereco, nome };
 }
 
