@@ -4,10 +4,13 @@
 //   npm run simulacao                 abre o Chrome e mostra cada passo devagar
 //   npm run simulacao -- --rapido     sem janela e sem pausas (bom para conferir se nada quebrou)
 //   npm run simulacao -- --manter     não apaga os dados no fim (para apresentar ou explorar à mão)
+//   npm run simulacao -- --exemplo    monta os dados de exemplo fixos (uma técnica, dois produtores) e os mantém
+//   npm run simulacao -- --limpar     apaga os dados de todas as simulações anteriores (não mexe no exemplo)
 //   npm run simulacao -- --url http://localhost:3000
 //
-// Cria um técnico e um produtor novos a cada execução (e-mails com carimbo de tempo) e, no fim,
-// apaga tudo o que criou. Fotos de cada passo e um relatório em HTML ficam em simulacao/saida/<data>/.
+// Na simulação comum, cria um técnico e um produtor novos (e-mails com carimbo de tempo) e, no fim,
+// apaga tudo o que criou. Com --exemplo, usa logins fixos, recria o exemplo do zero e não apaga.
+// Fotos de cada passo e um relatório em HTML ficam em simulacao/saida/<data>/.
 
 import { chromium } from "playwright-core";
 import { createClient } from "@supabase/supabase-js";
@@ -23,22 +26,62 @@ const URL_BASE = opcao("--url") ?? "http://localhost:3123";
 const RAPIDO = args.includes("--rapido");
 const MANTER = args.includes("--manter");
 const SO_LIMPAR = args.includes("--limpar");
+const EXEMPLO = args.includes("--exemplo");
 const CHROME = opcao("--chrome") ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
 
-// Lavoura de soja e trigo no Planalto Médio gaúcho (Cruz Alta - RS)
-const LOCAL = "-28.5795, -53.6630";
 const carimbo = Date.now().toString(36);
 const DIGITOS = String(Date.now()).slice(-8);
-const TECNICO = { nome: "Marina Souza (simulação)", email: `sim.tecnico.${carimbo}@field.test`, telefone: "(55) 99111-2233", registro: "CREA-RS 123456", instituicao: "Emater/RS-Ascar", senha: "simulacao-123" };
-const PRODUTOR = { nome: "Joaquim Pereira (simulação)", email: `sim.produtor.${carimbo}@field.test`, celular: `(55) 9${DIGITOS.slice(0, 4)}-${DIGITOS.slice(4)}`, senha: "lavoura-2026" };
-const PROPRIEDADE = "Sítio Boa Esperança (simulação)";
-const TALHOES = [
-  { nome: "Talhão da coxilha", cor: "Laranja", dx: -1 },
-  { nome: "Talhão da sanga", cor: "Azul", dx: 1 },
+const marca = EXEMPLO ? "" : " (simulação)";
+const TECNICO = EXEMPLO
+  ? { nome: "Marina Souza", email: "exemplo.tecnico@field.test", telefone: "(55) 99111-2233", registro: "CREA-RS 123456", instituicao: "Emater/RS-Ascar", senha: "exemplo-2026" }
+  : { nome: "Marina Souza (simulação)", email: `sim.tecnico.${carimbo}@field.test`, telefone: "(55) 99111-2233", registro: "CREA-RS 123456", instituicao: "Emater/RS-Ascar", senha: "simulacao-123" };
+
+/**
+ * Clientes da técnica. O primeiro faz o ciclo inteiro (plano, dúvida, tarefa, relato).
+ * O segundo (só no exemplo) fica com tudo cadastrado, esperando o plano.
+ * Ambos no Planalto Médio gaúcho (Cruz Alta - RS), em lavouras de soja e trigo.
+ */
+const CLIENTES = [
+  {
+    produtor: {
+      nome: `Joaquim Pereira${marca}`,
+      email: EXEMPLO ? "exemplo.produtor1@field.test" : `sim.produtor.${carimbo}@field.test`,
+      celular: EXEMPLO ? "(55) 99876-0001" : `(55) 9${DIGITOS.slice(0, 4)}-${DIGITOS.slice(4)}`,
+      senha: "lavoura-2026",
+    },
+    observacoes: "Soja e trigo há 10 anos. Quer recuperar o solo e reduzir adubo.",
+    propriedade: `Sítio Boa Esperança${marca}`,
+    local: "-28.5795, -53.6630",
+    talhoes: [{ nome: "Talhão da coxilha", cor: "Laranja", dx: -1, rotacao: 1 }, { nome: "Talhão da sanga", cor: "Azul", dx: 1 }],
+    visita: {
+      objetivo: "Diagnóstico inicial e coleta de solo", uso: "Lavoura de grãos", cultura: "Soja recém-emergida", historico: "Soja/trigo há 10 anos, plantio direto",
+      opcoes: ["Às vezes, em chuva forte", "Laminar", "Suspeita", "Parcial", "Sim"],
+      maquinario: "Plantadeira de plantio direto, pulverizador", mercado: "Cooperativa", objetivoProdutor: "Recuperar o solo e gastar menos com adubo",
+    },
+    solo: { valores: { ph: 4.8, p: 7, k: 1.6, ca: 21, mg: 7, al: 5, hal: 55, mo: 26, argila: 48 }, laboratorio: "Laboratório de Solos UFSM" },
+  },
+  {
+    produtor: { nome: "Ana Lúcia Ferreira", email: "exemplo.produtor2@field.test", celular: "(55) 99876-0002", senha: "lavoura-2026" },
+    observacoes: "Arrendou a área há dois anos. Lavoura convencional, com enxurrada na baixada.",
+    propriedade: "Fazenda Santa Rita",
+    local: "-28.5480, -53.7020",
+    talhoes: [{ nome: "Talhão da baixada", cor: "Roxo", dx: -1, rotacao: 2 }, { nome: "Talhão do galpão", cor: "Verde-limão", dx: 1 }],
+    visita: {
+      objetivo: "Primeira visita: enxurrada e queda de produtividade", uso: "Lavoura de grãos", cultura: "Soja em emergência", historico: "Soja no verão e solo descoberto no inverno há 5 anos; revolve o solo",
+      opcoes: ["Com frequência", "Sulcos", "Confirmada", "Descoberto", "Não, revolve o solo"],
+      maquinario: "Grade, plantadeira convencional", mercado: "Cerealista da cidade", objetivoProdutor: "Parar de perder terra com a chuva e melhorar a produtividade",
+    },
+    solo: { valores: { ph: 4.5, p: 4, k: 1.1, ca: 14, mg: 5, al: 9, hal: 72, mo: 18, argila: 55 }, laboratorio: "Laboratório de Solos UFSM" },
+  },
 ];
+const PRODUTOR = CLIENTES[0].produtor;
+const CLIENTES_DA_EXECUCAO = EXEMPLO ? CLIENTES : CLIENTES.slice(0, 1);
+/** Contas desta execução (técnico e produtores). */
+const EMAILS = [TECNICO.email, ...CLIENTES_DA_EXECUCAO.map((c) => c.produtor.email)];
+const DE_SIMULACOES = /^sim\.(tecnico|produtor)\.[a-z0-9]+@field\.test$/;
 
 const quando = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 16);
-const SAIDA = path.join(RAIZ, "simulacao", "saida", quando);
+const SAIDA = path.join(RAIZ, "simulacao", "saida", EXEMPLO ? `${quando}-exemplo` : quando);
 mkdirSync(SAIDA, { recursive: true });
 
 const passos = [];
@@ -129,20 +172,18 @@ function supabaseAdmin() {
   return createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 }
 
-/**
- * Apaga o que a simulação criou: usuários, propriedades dos técnicos e os arquivos delas.
- * Por padrão só os desta execução; com todas = true, os de todas as simulações (e-mails sim.*@field.test).
- */
-async function limpar(todas = false) {
+/** Apaga as contas cujo e-mail passa no filtro, as propriedades dos técnicos entre elas e os arquivos dessas propriedades. */
+async function limpar(filtro) {
   const sb = supabaseAdmin();
   const { data } = await sb.auth.admin.listUsers({ perPage: 1000 });
-  const daSimulacao = (e = "") => (todas ? /^sim\.(tecnico|produtor)\.[a-z0-9]+@field\.test$/.test(e) : e === TECNICO.email || e === PRODUTOR.email);
-  const usuarios = data.users.filter((u) => daSimulacao(u.email));
-  for (const tecnico of usuarios.filter((u) => u.email?.startsWith("sim.tecnico."))) {
+  const usuarios = data.users.filter((u) => filtro(u.email ?? ""));
+  for (const tecnico of usuarios.filter((u) => u.user_metadata?.papel === "tecnico")) {
     const { data: props } = await sb.from("propriedades").select("id").eq("tecnico_id", tecnico.id);
     for (const p of props ?? []) {
-      const { data: arquivos } = await sb.storage.from("arquivos").list(`${p.id}/ocorrencias`);
-      if (arquivos?.length) await sb.storage.from("arquivos").remove(arquivos.map((a) => `${p.id}/ocorrencias/${a.name}`));
+      for (const pasta of ["ocorrencias", "laudos"]) {
+        const { data: arquivos } = await sb.storage.from("arquivos").list(`${p.id}/${pasta}`);
+        if (arquivos?.length) await sb.storage.from("arquivos").remove(arquivos.map((a) => `${p.id}/${pasta}/${a.name}`));
+      }
       // Talhões levam junto análises, planos, tarefas, relatos e dados da NASA (on delete cascade)
       await sb.from("ocorrencias").delete().eq("propriedade_id", p.id);
       await sb.from("talhoes").delete().eq("propriedade_id", p.id);
@@ -162,8 +203,9 @@ function relatorio(inicio) {
   const total = ((Date.now() - inicio) / 1000).toFixed(0);
   const okTodos = passos.every((p) => p.ok);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const logins = [`Técnica: ${TECNICO.email} / ${TECNICO.senha}`, ...CLIENTES_DA_EXECUCAO.map((c) => `${c.produtor.nome}: ${c.produtor.celular} ou ${c.produtor.email} / ${c.produtor.senha}`)];
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Simulação Field Shift · ${quando}</title>
+<title>${EXEMPLO ? "Exemplo" : "Simulação"} Field Shift · ${quando}</title>
 <style>
 :root{--bg:#f4f1e8;--fg:#1d2a1f;--muted:#5b6b5d;--line:#d9d3c2;--card:#fffdf7;--tec:#1d5fa6;--prod:#2f7d4a;--bad:#b23b2c}
 @media (prefers-color-scheme:dark){:root{--bg:#141a15;--fg:#e8efe6;--muted:#9fb0a2;--line:#2c372e;--card:#1b231c;--tec:#7fb0ec;--prod:#6cc28a;--bad:#ec7a6a}}
@@ -172,6 +214,7 @@ main{max-width:1100px;margin:0 auto;padding:32px max(16px,env(safe-area-inset-le
 h1{font-size:1.8rem;margin:0 0 4px;text-wrap:balance}p.sub{color:var(--muted);margin:0 0 24px}
 .resumo{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:28px}.resumo div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
 .resumo b{display:block;font-size:1.3rem}ol{list-style:none;padding:0;margin:0;display:grid;gap:18px}
+.logins{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:0 0 24px;font-family:ui-monospace,Consolas,monospace;font-size:.9rem}
 li{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
 @media (min-width:800px){li{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)}}
 .ator{display:inline-block;font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px;color:var(--card)}
@@ -179,9 +222,10 @@ li{background:var(--card);border:1px solid var(--line);border-radius:16px;paddin
 .erro{color:var(--bad);font-weight:600}img{width:100%;border-radius:10px;border:1px solid var(--line);display:block}
 .cel img{max-width:300px;margin:0 auto}
 </style></head><body><main>
-<h1>Simulação do fluxo Field Shift</h1>
-<p class="sub">${esc(quando.replace(/-(\d\d)-(\d\d)$/, " $1:$2"))} · ${esc(URL_BASE)} · técnico ${esc(TECNICO.email)} · produtor ${esc(PRODUTOR.email)}</p>
+<h1>${EXEMPLO ? "Dados de exemplo do Field Shift" : "Simulação do fluxo Field Shift"}</h1>
+<p class="sub">${esc(quando.replace(/-(\d\d)-(\d\d)$/, " $1:$2"))} · ${esc(URL_BASE)}</p>
 <div class="resumo"><div><b>${okTodos ? "Tudo certo" : "Falhou"}</b>resultado</div><div><b>${passos.filter((p) => p.ok).length}/${passos.length}</b>passos concluídos</div><div><b>${total} s</b>duração</div><div><b>${errosNoNavegador.length}</b>erros no console</div></div>
+${EXEMPLO || MANTER ? `<div class="logins">${logins.map(esc).join("<br>")}</div>` : ""}
 <ol>${passos.map((p) => `<li${p.ator === "Produtor" ? ' class="cel"' : ""}><div><span class="ator ${p.ator}">${p.ator}</span><h2>${p.n}. ${esc(p.titulo)}</h2><p>${esc(p.descricao)}</p><p class="meta">${(p.ms / 1000).toFixed(1)} s</p>${p.erro ? `<p class="erro">${esc(p.erro)}</p>` : ""}</div><img src="${p.foto}" alt="Tela do passo ${p.n}: ${esc(p.titulo)}" loading="lazy"></li>`).join("")}</ol>
 ${errosNoNavegador.length ? `<h2>Erros no console do navegador</h2><pre>${esc(errosNoNavegador.join("\n"))}</pre>` : ""}
 </main></body></html>`;
@@ -189,15 +233,105 @@ ${errosNoNavegador.length ? `<h2>Erros no console do navegador</h2><pre>${esc(er
   return path.join(SAIDA, "relatorio.html");
 }
 
+/**
+ * Do cadastro do cliente à análise de solo: produtor, propriedade, talhões, (dados da NASA), visita e solo.
+ * Devolve os endereços da propriedade e do primeiro talhão na área do técnico.
+ */
+async function cadastrarCliente(tec, c, { mostrarNasa }) {
+  const primeiroNome = c.produtor.nome.split(" ")[0];
+  await passo(tec, "Técnico", `Cadastra ${primeiroNome} e cria o acesso`, "Não existe cadastro aberto para produtor: o técnico cria o login (e-mail e celular) e a senha, e manda pelo WhatsApp.", async () => {
+    await tec.getByRole("link", { name: "Novo cliente" }).first().click();
+    await tec.waitForURL("**/tecnico/produtores/novo");
+    await tec.fill('input[name="nome"]', c.produtor.nome);
+    await tec.fill('input[name="celular"]', c.produtor.celular);
+    await tec.fill('input[name="email"]', c.produtor.email);
+    await tec.fill('input[name="senha"]', c.produtor.senha);
+    await tec.fill('textarea[name="observacoes"]', c.observacoes).catch(() => {});
+    await tec.getByRole("button", { name: "Salvar cliente e criar acesso" }).click();
+    await tec.getByRole("link", { name: /Cadastrar a propriedade de/ }).waitFor();
+  });
+
+  await passo(tec, "Técnico", `Marca a propriedade ${c.propriedade} no mapa`, "Busca pelas coordenadas: o mapa marca o ponto e preenche município, UF e endereço. O técnico desenha o limite e dá o nome.", async () => {
+    await tec.getByRole("link", { name: /Cadastrar a propriedade de/ }).click();
+    await tec.waitForURL("**/propriedades/nova");
+    await tec.getByPlaceholder(/coordenadas/).fill(c.local);
+    await tec.getByRole("button", { name: "Buscar" }).click();
+    await tec.getByText(/Preenchido pelo mapa|não achou o município|Preencha à mão/).waitFor();
+    // Retângulo de 520 × 340 px: cerca de 75 ha no zoom 16, 19 ha no 17. Milhares de ha = mapa ainda longe
+    await desenharArea(tec, tec.locator("main"), [[-260, -170], [260, -170], [260, 170], [-260, 170]], /limite de/, [10, 250],
+      () => tec.getByRole("button", { name: "Buscar" }).click());
+    await tec.fill('input[name="nome"]', c.propriedade);
+    await pausa(600);
+    await Promise.all([tec.waitForURL(/\/tecnico\/propriedades\/[^/]+$/), tec.getByRole("button", { name: "Salvar e desenhar os talhões" }).click()]);
+  });
+  const urlPropriedade = tec.url();
+
+  for (const [i, t] of c.talhoes.entries()) {
+    await passo(tec, "Técnico", `Desenha o ${t.nome.toLowerCase()}`, `Contorno desenhado sobre a imagem de satélite, cor ${t.cor.toLowerCase()} e o que se planta hoje. Ao salvar, o app busca 20 anos de clima (NASA POWER) e o relevo (SRTM).`, async () => {
+      if (i > 0) await tec.goto(urlPropriedade);
+      const secao = tec.locator("section", { hasText: "Cadastrar novo talhão" });
+      await secao.locator(".maplibregl-canvas").waitFor();
+      await desenharArea(tec, secao, [[t.dx * 20, -110], [t.dx * 200, -110], [t.dx * 200, 120], [t.dx * 20, 120]], /Área desenhada/, [1, 80]);
+      await secao.locator("#nome").fill(t.nome);
+      await secao.locator(`label[title^="${t.cor}"]`).click();
+      if (t.rotacao) await secao.locator("#rotacao_atual").selectOption({ index: t.rotacao });
+      await Promise.all([tec.waitForURL("**/tecnico/talhoes/**", { timeout: 120_000 }), secao.getByRole("button", { name: "Salvar talhão" }).click()]);
+      await tec.getByRole("heading", { name: "Riscos do talhão" }).waitFor({ timeout: 120_000 });
+    });
+  }
+
+  await tec.goto(urlPropriedade);
+  await tec.locator("li", { hasText: c.talhoes[0].nome }).getByRole("link", { name: "Abrir talhão" }).click();
+  await tec.waitForURL("**/tecnico/talhoes/**");
+  const urlTalhao = tec.url().split("?")[0];
+
+  if (mostrarNasa) {
+    await passo(tec, "Técnico", "Lê os dados da NASA do talhão", "Riscos de alagamento, erosão, geada, seca e calor calculados com 20 anos de NASA POWER e o relevo do SRTM.", async () => {
+      await tec.getByRole("heading", { name: "Riscos do talhão" }).waitFor();
+      await tec.getByRole("heading", { name: "Clima mês a mês (2005–2024)" }).scrollIntoViewIfNeeded();
+    });
+  }
+
+  await passo(tec, "Técnico", "Registra a visita técnica", "O que o satélite não vê: alagamento, erosão, compactação, manejo, máquinas e o que o produtor quer.", async () => {
+    await tec.getByRole("link", { name: "Registrar visita" }).first().click();
+    await tec.waitForURL("**/visita?talhao=**");
+    const v = c.visita;
+    await tec.fill("#objetivo", v.objetivo);
+    await tec.fill("#uso_atual", v.uso);
+    await tec.fill("#cultura_atual", v.cultura);
+    await tec.fill("#historico", v.historico);
+    for (const opcao of v.opcoes) await tec.locator("label", { hasText: new RegExp(`^${opcao}$`) }).first().click();
+    await tec.fill("#maquinario", v.maquinario);
+    await tec.fill("#mercado", v.mercado);
+    await tec.fill("#objetivo_produtor", v.objetivoProdutor);
+    await Promise.all([tec.waitForURL("**/tecnico/talhoes/**"), tec.getByRole("button", { name: "Salvar visita" }).click()]);
+  });
+
+  await passo(tec, "Técnico", "Registra a análise de solo", "Valores do laudo do laboratório. O app interpreta pela tabela do IAC (Boletim 100) e mostra o que precisa de correção.", async () => {
+    await tec.goto(`${urlTalhao}?aba=solo`);
+    for (const [k, v] of Object.entries(c.solo.valores)) await tec.fill(`#f-${k}`, String(v));
+    await tec.fill('input[name="laboratorio"]', c.solo.laboratorio).catch(() => {});
+    await tec.getByRole("button", { name: "Salvar amostra" }).click();
+    await tec.waitForURL("**aba=solo");
+    await tec.getByRole("button", { name: "Excluir" }).first().waitFor();
+  });
+
+  return { urlPropriedade, urlTalhao };
+}
+
 async function main() {
   if (SO_LIMPAR) {
-    console.log(`Apagados ${await limpar(true)} usuários de simulações anteriores e tudo ligado a eles.`);
+    console.log(`Apagados ${await limpar((e) => DE_SIMULACOES.test(e))} usuários de simulações anteriores e tudo ligado a eles.`);
     return;
   }
   const inicio = Date.now();
   const resposta = await fetch(`${URL_BASE}/entrar`).catch(() => null);
   if (!resposta?.ok) throw new Error(`O app não respondeu em ${URL_BASE}. Rode antes: npm run dev -- -p 3123`);
-  console.log(`Simulação em ${URL_BASE}\nTécnico: ${TECNICO.email}\nProdutor: ${PRODUTOR.email} · ${PRODUTOR.celular}\nSaída: ${SAIDA}\n`);
+  if (EXEMPLO) {
+    const n = await limpar((e) => EMAILS.includes(e));
+    if (n) console.log(`Exemplo anterior apagado (${n} usuários). Montando de novo.`);
+  }
+  console.log(`${EXEMPLO ? "Exemplo" : "Simulação"} em ${URL_BASE}\nTécnico: ${TECNICO.email}\n${CLIENTES_DA_EXECUCAO.map((c) => `Produtor: ${c.produtor.email} · ${c.produtor.celular}`).join("\n")}\nSaída: ${SAIDA}\n`);
 
   const abrir = (x, largura, altura) => chromium.launch({
     executablePath: CHROME, headless: RAPIDO, slowMo: RAPIDO ? 0 : 60,
@@ -207,11 +341,14 @@ async function main() {
   const navProdutor = await abrir(1310, 440, 960);
   const tec = await (await navTecnico.newContext({ viewport: { width: 1280, height: 860 }, locale: "pt-BR" })).newPage();
   // O produtor usa o celular
-  const prod = await (await navProdutor.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: "pt-BR" })).newPage();
-  for (const [pagina, quem] of [[tec, "técnico"], [prod, "produtor"]]) {
+  const celular = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: "pt-BR" };
+  const prod = await (await navProdutor.newContext(celular)).newPage();
+  const vigiar = (pagina, quem) => {
     pagina.setDefaultTimeout(90_000);
     pagina.on("console", (m) => { if (m.type() === "error") errosNoNavegador.push(`[${quem}] ${m.text().slice(0, 300)}`); });
-  }
+  };
+  vigiar(tec, "técnico");
+  vigiar(prod, "produtor");
 
   let ok = false;
   try {
@@ -229,82 +366,8 @@ async function main() {
       await Promise.all([tec.waitForURL(/\/tecnico$/), tec.getByRole("button", { name: "Criar conta de técnico" }).click()]);
     });
 
-    await passo(tec, "Técnico", "Cadastra o produtor e cria o acesso dele", "Não existe cadastro aberto para produtor: o técnico cria o login (e-mail e celular) e a senha, e manda pelo WhatsApp.", async () => {
-      await tec.getByRole("link", { name: "Novo cliente" }).first().click();
-      await tec.waitForURL("**/tecnico/produtores/novo");
-      await tec.fill('input[name="nome"]', PRODUTOR.nome);
-      await tec.fill('input[name="celular"]', PRODUTOR.celular);
-      await tec.fill('input[name="email"]', PRODUTOR.email);
-      await tec.fill('input[name="senha"]', PRODUTOR.senha);
-      await tec.fill('textarea[name="observacoes"]', "Soja e trigo há 10 anos. Quer recuperar o solo e reduzir adubo.").catch(() => {});
-      await tec.getByRole("button", { name: "Salvar cliente e criar acesso" }).click();
-      await tec.getByRole("link", { name: /Cadastrar a propriedade de/ }).waitFor();
-    });
-
-    await passo(tec, "Técnico", "Marca a propriedade no mapa", "Busca pelas coordenadas: o mapa marca o ponto e preenche município, UF e endereço. O técnico desenha o limite e dá o nome.", async () => {
-      await tec.getByRole("link", { name: /Cadastrar a propriedade de/ }).click();
-      await tec.waitForURL("**/propriedades/nova");
-      await tec.getByPlaceholder(/coordenadas/).fill(LOCAL);
-      await tec.getByRole("button", { name: "Buscar" }).click();
-      await tec.getByText(/Preenchido pelo mapa|não achou o município|Preencha à mão/).waitFor();
-      // Retângulo de 520 × 340 px: cerca de 75 ha no zoom 16, 19 ha no 17. Milhares de ha = mapa ainda longe
-      await desenharArea(tec, tec.locator("main"), [[-260, -170], [260, -170], [260, 170], [-260, 170]], /limite de/, [10, 250],
-        () => tec.getByRole("button", { name: "Buscar" }).click());
-      await tec.fill('input[name="nome"]', PROPRIEDADE);
-      await pausa(600);
-      await Promise.all([tec.waitForURL(/\/tecnico\/propriedades\/[^/]+$/), tec.getByRole("button", { name: "Salvar e desenhar os talhões" }).click()]);
-    });
-    const urlPropriedadeTec = tec.url();
-
-    for (const [i, t] of TALHOES.entries()) {
-      await passo(tec, "Técnico", `Desenha o ${t.nome.toLowerCase()}`, `Contorno desenhado sobre a imagem de satélite, cor ${t.cor.toLowerCase()} e o que se planta hoje. Ao salvar, o app busca 20 anos de clima (NASA POWER) e o relevo (SRTM).`, async () => {
-        if (i > 0) await tec.goto(urlPropriedadeTec);
-        const secao = tec.locator("section", { hasText: "Cadastrar novo talhão" });
-        await secao.locator(".maplibregl-canvas").waitFor();
-        await desenharArea(tec, secao, [[t.dx * 20, -110], [t.dx * 200, -110], [t.dx * 200, 120], [t.dx * 20, 120]], /Área desenhada/, [1, 80]);
-        await secao.locator("#nome").fill(t.nome);
-        await secao.locator(`label[title^="${t.cor}"]`).click();
-        if (i === 0) await secao.locator("#rotacao_atual").selectOption({ index: 1 });
-        await Promise.all([tec.waitForURL("**/tecnico/talhoes/**", { timeout: 120_000 }), secao.getByRole("button", { name: "Salvar talhão" }).click()]);
-        await tec.getByRole("heading", { name: "Riscos do talhão" }).waitFor({ timeout: 120_000 });
-      });
-    }
-
-    await tec.goto(urlPropriedadeTec);
-    await tec.locator("li", { hasText: TALHOES[0].nome }).getByRole("link", { name: "Abrir talhão" }).click();
-    await tec.waitForURL("**/tecnico/talhoes/**");
-    const urlTalhaoTec = tec.url().split("?")[0];
-
-    await passo(tec, "Técnico", "Lê os dados da NASA do talhão", "Riscos de alagamento, erosão, geada, seca e calor calculados com 20 anos de NASA POWER e o relevo do SRTM.", async () => {
-      await tec.getByRole("heading", { name: "Riscos do talhão" }).waitFor();
-      await tec.getByRole("heading", { name: "Clima mês a mês (2005–2024)" }).scrollIntoViewIfNeeded();
-    });
-
-    await passo(tec, "Técnico", "Registra a visita técnica", "O que o satélite não vê: alagamento, erosão, compactação, manejo, máquinas e o que o produtor quer.", async () => {
-      await tec.getByRole("link", { name: "Registrar visita" }).first().click();
-      await tec.waitForURL("**/visita?talhao=**");
-      await tec.fill("#objetivo", "Diagnóstico inicial e coleta de solo");
-      await tec.fill("#uso_atual", "Lavoura de grãos");
-      await tec.fill("#cultura_atual", "Soja recém-emergida");
-      await tec.fill("#historico", "Soja/trigo há 10 anos, plantio direto");
-      for (const opcao of ["Às vezes, em chuva forte", "Laminar", "Suspeita", "Parcial", "Sim"]) {
-        await tec.locator("label", { hasText: new RegExp(`^${opcao}$`) }).first().click();
-      }
-      await tec.fill("#maquinario", "Plantadeira de plantio direto, pulverizador");
-      await tec.fill("#mercado", "Cooperativa");
-      await tec.fill("#objetivo_produtor", "Recuperar o solo e gastar menos com adubo");
-      await Promise.all([tec.waitForURL("**/tecnico/talhoes/**"), tec.getByRole("button", { name: "Salvar visita" }).click()]);
-    });
-
-    await passo(tec, "Técnico", "Registra a análise de solo", "Valores do laudo do laboratório. O app interpreta pela tabela do IAC (Boletim 100) e mostra o que precisa de correção.", async () => {
-      await tec.goto(`${urlTalhaoTec}?aba=solo`);
-      const valores = { ph: 4.8, p: 7, k: 1.6, ca: 21, mg: 7, al: 5, hal: 55, mo: 26, argila: 48 };
-      for (const [k, v] of Object.entries(valores)) await tec.fill(`#f-${k}`, String(v));
-      await tec.fill('input[name="laboratorio"]', "Laboratório de Solos UFSM").catch(() => {});
-      await tec.getByRole("button", { name: "Salvar amostra" }).click();
-      await tec.waitForURL("**aba=solo");
-      await tec.getByRole("button", { name: "Excluir" }).first().waitFor();
-    });
+    const { urlPropriedade: urlPropriedadeTec, urlTalhao: urlTalhaoTec } = await cadastrarCliente(tec, CLIENTES[0], { mostrarNasa: true });
+    const talhaoPrincipal = CLIENTES[0].talhoes[0].nome;
 
     await passo(tec, "Técnico", "Compara as rotações e escolhe uma", "As rotações possíveis para a região, com notas de solo, erosão, clima, renda, água e forragem. O técnico escolhe e o app monta o plano com as tarefas.", async () => {
       await tec.goto(`${urlTalhaoTec}?aba=rotacoes`);
@@ -380,7 +443,7 @@ async function main() {
       await prod.getByRole("navigation", { name: "Atalhos" }).getByRole("link", { name: "Relatar" }).click();
       await prod.waitForURL("**/relatar");
       await prod.getByText("Um talhão específico", { exact: true }).click();
-      await prod.locator("label", { hasText: TALHOES[0].nome }).click();
+      await prod.locator("label", { hasText: talhaoPrincipal }).click();
       await esperar(2500);
       await tocarNoMapa(prod, prod.locator(".maplibregl-canvas"), [[-15, 20]]);
       await prod.getByText("Ponto que você marcou no mapa").waitFor();
@@ -414,12 +477,33 @@ async function main() {
 
     await passo(prod, "Produtor", "Recebe a resposta do relato", "Na página do talhão, o relato aparece como resolvido, com a orientação do técnico.", async () => {
       await prod.goto(urlPropriedadeProd);
-      await prod.locator("li", { hasText: TALHOES[0].nome }).getByRole("link", { name: "Abrir talhão" }).click();
+      await prod.locator("li", { hasText: talhaoPrincipal }).getByRole("link", { name: "Abrir talhão" }).click();
       await prod.waitForURL("**/produtor/talhoes/**");
       const relato = prod.getByText(/Técnico:/).first();
       await relato.waitFor();
       await relato.scrollIntoViewIfNeeded();
     });
+
+    // ───────── Exemplo: segunda cliente, tudo cadastrado e esperando o plano ─────────
+    if (EXEMPLO) {
+      const segunda = CLIENTES[1];
+      await cadastrarCliente(tec, segunda, { mostrarNasa: false });
+
+      await passo(tec, "Técnico", "Vê a carteira de clientes", "Dois clientes: um com o plano combinado e outra com visita e análise de solo prontas, esperando o plano.", async () => {
+        await tec.goto(`${URL_BASE}/tecnico`);
+        await tec.getByText(segunda.produtor.nome).first().waitFor();
+      });
+
+      const prod2 = await (await navProdutor.newContext(celular)).newPage();
+      vigiar(prod2, "produtora 2");
+      await passo(prod2, "Produtor", `${segunda.produtor.nome.split(" ")[0]} vê a propriedade esperando o plano`, "Antes do plano, o produtor já vê a propriedade, os talhões, o tempo dos satélites da NASA e o contato da técnica.", async () => {
+        await prod2.goto(`${URL_BASE}/entrar`);
+        await prod2.fill('input[name="login"]', segunda.produtor.celular);
+        await prod2.fill('input[name="senha"]', segunda.produtor.senha);
+        await Promise.all([prod2.waitForURL("**/produtor/propriedades/**"), prod2.getByRole("button", { name: "Entrar", exact: true }).click()]);
+        await prod2.getByText("Plano ainda não publicado").first().scrollIntoViewIfNeeded();
+      });
+    }
     ok = true;
   } catch (e) {
     console.error(`\n${e instanceof Error ? e.message : e}`);
@@ -429,10 +513,11 @@ async function main() {
     if (!RAPIDO) await pausa(2500);
     await navTecnico.close();
     await navProdutor.close();
-    if (MANTER) {
-      console.log(`Dados mantidos. Técnico: ${TECNICO.email} / ${TECNICO.senha} · Produtor: ${PRODUTOR.celular} / ${PRODUTOR.senha}`);
+    if (MANTER || EXEMPLO) {
+      console.log(`Dados mantidos. Técnica: ${TECNICO.email} / ${TECNICO.senha}`);
+      for (const c of CLIENTES_DA_EXECUCAO) console.log(`  ${c.produtor.nome}: ${c.produtor.celular} ou ${c.produtor.email} / ${c.produtor.senha}`);
     } else {
-      const n = await limpar();
+      const n = await limpar((e) => EMAILS.includes(e));
       console.log(`Dados da simulação apagados (${n} usuários e tudo ligado a eles).`);
     }
   }

@@ -50,3 +50,20 @@ Saiu o botão "Anexar minha localização" (GPS): ele anexava um ponto que o pro
 Praga, doença e planta daninha quase sempre começam em manchas. Quando o produtor escolhe uma delas para a propriedade inteira, o app sugere escolher o talhão onde viu primeiro, mas não obriga.
 
 Próximo passo possível: usar o GPS só como atalho para "estou aqui", aceito apenas se o ponto cair dentro da propriedade.
+
+## 9. IA (Claude) fica no papel neste protótipo (15/11/2026)
+
+Os dois pontos em que a IA entraria continuam visíveis no app, com a etiqueta "IA · em breve". Ao clicar, abre um aviso explicando o que a IA faria ali e o que fazer por enquanto. O código que chamava a API foi retirado. A versão funcional está no histórico do git, no commit `42efd71` e anteriores: `src/app/api/laudo` e `src/app/api/resumo`, com `@anthropic-ai/sdk`.
+
+**Ler o laudo de solo (aba Solo do talhão).** Hoje a foto ou o PDF do laudo é só anexado à amostra, e o técnico digita os valores. Com IA, funcionaria assim:
+- O arquivo seria enviado ao Claude como imagem ou documento, com saída estruturada (schema): laboratório, data e uma lista de amostras. Cada amostra teria código, profundidade, pH (CaCl₂ e água), SMP, P (com o método, resina ou Mehlich), K, Ca, Mg, Al, H+Al, M.O., argila e as unidades impressas.
+- Instrução ao modelo: extrair todas as amostras da tabela, valores exatamente como impressos, null quando vazio ou "n.s.", sem inventar nem estimar, e anotar numa frase o que estiver ilegível.
+- O app converteria as unidades: cmolc para mmolc (×10), K em mg/dm³ (÷39,1), M.O. em % ou dag/kg (×10).
+- O técnico escolheria a amostra, conferiria cada número com o papel e salvaria. A amostra ficaria marcada como "lida por IA e conferida".
+
+**Escrever o texto do plano para o produtor (aba Plano).** Hoje o técnico escreve à mão. Com IA, funcionaria assim:
+- Entrada: rotação escolhida e a atual, notas de 0 a 100 de cada uma, riscos da área, previsão de chuva, justificativa do técnico e tarefas.
+- Regras: português simples, frases curtas, no máximo 120 palavras, sem markdown, sem siglas sem explicar. O texto diz o que plantar e quando, por que é bom para o produtor e o principal cuidado. Não inventa números, doses nem produtos. Termina lembrando que dúvidas são com o técnico.
+- O técnico revisaria o rascunho antes de publicar.
+
+Para ligar no futuro: modelo `claude-opus-5-5` com fallback no servidor (`server-side-fallback-2026-07-01`), chave em `ANTHROPIC_API_KEY` (variável sensível na Vercel), custo de US$ 4 por milhão de tokens de entrada e US$ 20 por milhão de saída.

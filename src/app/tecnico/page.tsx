@@ -7,7 +7,20 @@ export const metadata = { title: "Clientes" };
 
 interface Linha {
   id: string; nome: string; telefone: string;
-  propriedades: { id: string; municipio: string | null; uf: string | null; area_ha: number | null; talhoes: { id: string }[]; visitas: { data: string }[] }[];
+  propriedades: { id: string; municipio: string | null; uf: string | null; area_ha: number | null; talhoes: { id: string; planos: { status: string; resposta: string | null; resposta_tecnico: string | null }[] }[]; visitas: { data: string }[] }[];
+}
+
+/** Situação dos planos do cliente, do que mais pede ação do técnico para o que menos pede. */
+function situacaoDosPlanos(c: Linha): [tom: "atencao" | "info" | "bom" | "neutro", texto: string] | null {
+  const talhoes = c.propriedades.flatMap((p) => p.talhoes);
+  if (!talhoes.length) return null;
+  const publicados = talhoes.flatMap((t) => t.planos.filter((pl) => pl.status === "publicado"));
+  const semPlano = talhoes.filter((t) => !t.planos.length).length;
+  if (publicados.some((pl) => pl.resposta === "duvida" && !pl.resposta_tecnico)) return ["atencao", "Dúvida sobre o plano"];
+  if (semPlano) return ["atencao", semPlano === talhoes.length ? "Esperando o plano" : `${semPlano} ${semPlano > 1 ? "talhões" : "talhão"} sem plano`];
+  if (talhoes.some((t) => t.planos.length && t.planos.every((pl) => pl.status !== "publicado"))) return ["neutro", "Plano em rascunho"];
+  if (publicados.some((pl) => !pl.resposta)) return ["info", "Plano publicado, sem resposta"];
+  return ["bom", "Planos combinados"];
 }
 
 export default async function PainelTecnico(props: PageProps<"/tecnico">) {
@@ -16,7 +29,7 @@ export default async function PainelTecnico(props: PageProps<"/tecnico">) {
   const { supabase, perfil } = await exigirPerfil("tecnico");
   let consulta = supabase
     .from("produtores")
-    .select("id, nome, telefone, propriedades(id, municipio, uf, area_ha, talhoes(id), visitas(data))")
+    .select("id, nome, telefone, propriedades(id, municipio, uf, area_ha, talhoes(id, planos(status, resposta, resposta_tecnico)), visitas(data))")
     .eq("tecnico_id", perfil.id)
     .order("nome");
   if (busca) consulta = consulta.ilike("nome", `%${busca}%`);
@@ -96,6 +109,7 @@ export default async function PainelTecnico(props: PageProps<"/tecnico">) {
             const talhoes = c.propriedades.reduce((a, p) => a + p.talhoes.length, 0);
             const visitas = c.propriedades.flatMap((p) => p.visitas.map((v) => v.data)).sort();
             const municipios = [...new Set(c.propriedades.map((p) => [p.municipio, p.uf].filter(Boolean).join(" - ")).filter(Boolean))];
+            const situacao = situacaoDosPlanos(c);
             return (
               <li key={c.id}>
                 <Link href={`/tecnico/produtores/${c.id}`} className="card block h-full p-4 text-ink no-underline hover:border-brand">
@@ -106,7 +120,10 @@ export default async function PainelTecnico(props: PageProps<"/tecnico">) {
                     <div><dt className="text-muted">Talhões</dt><dd className="font-semibold">{talhoes}{ha ? ` · ${num(ha, 0)} ha` : ""}</dd></div>
                     <div><dt className="text-muted">Última visita</dt><dd className="font-semibold">{dataBR(visitas[visitas.length - 1])}</dd></div>
                   </dl>
-                  <p className="mt-2 text-sm text-muted">{formatarCelular(c.telefone)}</p>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm text-muted">{formatarCelular(c.telefone)}</span>
+                    {situacao && <Selo tom={situacao[0]}>{situacao[1]}</Selo>}
+                  </div>
                 </Link>
               </li>
             );

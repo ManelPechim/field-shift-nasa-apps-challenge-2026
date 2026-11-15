@@ -79,7 +79,7 @@ export function AbaPlano({ talhao, planos, tarefas, produtor }: { talhao: Talhao
           <input type="hidden" name="plano_id" value={plano.id} />
           <input type="hidden" name="talhao_id" value={talhao.id} />
           <div><label className="label" htmlFor="safra">Safra</label><input className="input w-32" id="safra" name="safra" defaultValue={plano.safra} /></div>
-          <CampoResumo planoId={plano.id} inicial={plano.resumo_produtor ?? ""} />
+          <CampoResumo inicial={plano.resumo_produtor ?? ""} />
           <div>
             <label className="label" htmlFor="justificativa">Justificativa técnica (só o técnico vê)</label>
             <textarea className="input min-h-24" id="justificativa" name="justificativa" defaultValue={plano.justificativa ?? ""} placeholder="Por que esta rotação, premissas, o que precisa ser confirmado." />

@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { AvisoIA, SeloIA } from "@/components/aviso-ia";
 import type { ValoresSolo } from "@/lib/tipos";
-
-interface Lida { codigo: string | null; descricao: string | null; profundidade: string | null; valores: ValoresSolo }
 
 const CAMPOS: [keyof ValoresSolo, string, string][] = [
   ["ph", "pH (CaCl₂)", ""], ["ph_agua", "pH (água)", ""], ["smp", "Índice SMP", ""], ["p", "P", "mg/dm³"],
@@ -13,41 +12,29 @@ const CAMPOS: [keyof ValoresSolo, string, string][] = [
 
 export function NovaAmostra({ talhaoId, acao }: { talhaoId: string; acao: (f: FormData) => Promise<void> }) {
   const [enviando, setEnviando] = useState(false);
-  const [status, setStatus] = useState("");
+  const [anexado, setAnexado] = useState("");
   const [erro, setErro] = useState("");
   const [path, setPath] = useState("");
-  const [lidas, setLidas] = useState<Lida[]>([]);
-  const [sel, setSel] = useState(0);
+  const [aviso, setAviso] = useState(false);
   const [valores, setValores] = useState<ValoresSolo>({ p_metodo: "resina" });
   const [meta, setMeta] = useState({ codigo: "", profundidade: "0-20 cm", laboratorio: "", data: "" });
-  const [fonte, setFonte] = useState("manual");
 
-  async function ler(arquivo: File) {
-    setEnviando(true); setErro(""); setStatus("Enviando o laudo e lendo com IA… leva de 10 a 40 segundos.");
+  // Guarda o arquivo junto da amostra; a leitura dos números por IA ainda não foi integrada
+  async function anexar(arquivo: File) {
+    setEnviando(true); setErro("");
     try {
       const fd = new FormData();
       fd.append("arquivo", arquivo);
       fd.append("talhao_id", talhaoId);
       const r = await fetch("/api/laudo", { method: "POST", body: fd });
       const j = await r.json();
-      if (!r.ok) { setErro(j.erro ?? "Não foi possível enviar."); setStatus(""); return; }
+      if (!r.ok) { setErro(j.erro ?? "Não foi possível enviar."); return; }
       setPath(j.path);
-      if (j.amostras?.length) {
-        setLidas(j.amostras); escolher(j.amostras, 0); setFonte("ia");
-        setMeta((m) => ({ ...m, laboratorio: j.laboratorio ?? m.laboratorio, data: (j.data ?? "").match(/^\d{4}-\d{2}-\d{2}$/) ? j.data : m.data }));
-        setStatus(`A IA encontrou ${j.amostras.length} amostra${j.amostras.length > 1 ? "s" : ""}. Confira cada número com o papel antes de salvar.${j.observacoes ? ` Observação: ${j.observacoes}` : ""}`);
-      } else setStatus(j.aviso ?? "Arquivo guardado. Preencha os valores.");
+      setAnexado(arquivo.name);
+      setAviso(true);
     } catch {
       setErro("A conexão falhou. Tente de novo.");
-      setStatus("");
     } finally { setEnviando(false); }
-  }
-
-  function escolher(lista: Lida[], i: number) {
-    setSel(i);
-    const a = lista[i];
-    setValores({ p_metodo: "resina", ...a.valores });
-    setMeta((m) => ({ ...m, codigo: a.codigo ?? "", profundidade: a.profundidade ?? a.descricao ?? m.profundidade }));
   }
 
   const sb = (valores.k ?? 0) + (valores.ca ?? 0) + (valores.mg ?? 0);
@@ -58,32 +45,25 @@ export function NovaAmostra({ talhaoId, acao }: { talhaoId: string; acao: (f: Fo
     <div className="card grid gap-4 p-4">
       <div>
         <span className="eyebrow">Nova amostra</span>
-        <p className="text-sm text-muted">Fotografe o laudo (ou envie o PDF do laboratório). A IA preenche os campos; você confere e salva. Também dá para digitar direto.</p>
+        <p className="text-sm text-muted">Anexe a foto ou o PDF do laudo do laboratório e digite os valores abaixo.</p>
       </div>
       <label className="flex cursor-pointer flex-col items-center gap-1 rounded-xl border-2 border-dashed border-line p-5 text-center hover:border-brand hover:bg-brand-soft">
         <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment" className="sr-only" disabled={enviando}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) ler(f); }} />
-        <b className="font-display">{enviando ? "Lendo o laudo…" : "Tirar foto ou escolher arquivo do laudo"}</b>
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) anexar(f); }} />
+        <b className="font-display">{enviando ? "Enviando o laudo…" : anexado ? "Trocar o arquivo do laudo" : "Tirar foto ou escolher arquivo do laudo"}</b>
         <span className="text-sm text-muted">JPG, PNG, WebP ou PDF, até 10 MB</span>
+        <span className="mt-1 flex items-center gap-1.5 text-xs text-muted"><SeloIA /> leitura automática dos números</span>
       </label>
-      {status && <p role="status" className="text-sm">{status}</p>}
+      {anexado && <p role="status" className="text-sm text-ok">Laudo anexado: {anexado}. Ele fica guardado com a amostra.</p>}
       {erro && <p role="alert" className="text-sm text-bad">{erro}</p>}
-
-      {lidas.length > 1 && (
-        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Amostra do laudo">
-          {lidas.map((a, i) => (
-            <button key={i} type="button" onClick={() => escolher(lidas, i)} aria-pressed={i === sel}
-              className={`rounded-full border px-3 py-1 font-mono text-xs ${i === sel ? "border-ink bg-ink text-surface" : "border-line"}`}>
-              {a.codigo ?? `#${i + 1}`} · {a.profundidade ?? a.descricao}
-            </button>
-          ))}
-        </div>
-      )}
+      <AvisoIA aberto={aviso} aoFechar={() => setAviso(false)} titulo="Ler o laudo com IA"
+        oQueFaria="leria a foto ou o PDF do laudo, acharia todas as amostras da tabela, converteria as unidades (cmolc, mg/dm³, %) e preencheria os campos abaixo para você conferir com o papel."
+        porEnquanto="o arquivo já ficou anexado à amostra. Digite os valores do laudo nos campos abaixo." />
 
       <form action={acao} className="grid gap-4">
         <input type="hidden" name="talhao_id" value={talhaoId} />
         <input type="hidden" name="laudo_path" value={path} />
-        <input type="hidden" name="fonte" value={fonte} />
+        <input type="hidden" name="fonte" value="manual" />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div><label className="label" htmlFor="codigo_lab">Código</label><input className="input" id="codigo_lab" name="codigo_lab" value={meta.codigo} onChange={(e) => setMeta({ ...meta, codigo: e.target.value })} /></div>
           <div><label className="label" htmlFor="profundidade">Profundidade</label><input className="input" id="profundidade" name="profundidade" value={meta.profundidade} onChange={(e) => setMeta({ ...meta, profundidade: e.target.value })} /></div>

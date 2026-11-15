@@ -4,7 +4,7 @@ import { Logo } from "@/components/ui";
 const PASSOS = [
   ["1", "Visita e mapa", "O técnico desenha os talhões sobre a imagem de satélite e registra o que viu no campo: relevo, erosão, alagamento, manejo e objetivos do produtor."],
   ["2", "Dados da NASA", "Para cada talhão, o app busca 20 anos de clima diário (NASA POWER), o relevo (SRTM) e camadas de vegetação e umidade do solo (MODIS, SMAP, HLS)."],
-  ["3", "Laudo de solo", "O técnico fotografa o laudo do laboratório. A IA lê os números, o técnico confere e o app interpreta a fertilidade e a saúde do solo."],
+  ["3", "Laudo de solo", "O técnico anexa o laudo do laboratório e digita os números; o app interpreta a fertilidade e a saúde do solo. A leitura do laudo por IA está planejada."],
   ["4", "Plano para o produtor", "O app compara a rotação atual com alternativas. O técnico escolhe, ajusta e publica um plano com tarefas em linguagem simples."],
   ["5", "Campo e acompanhamento", "O produtor vê o que fazer, marca o que fez e relata problemas com foto. Os alertas usam os dados recentes da NASA."],
 ];
