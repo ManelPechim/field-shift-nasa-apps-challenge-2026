@@ -44,7 +44,7 @@ export function AbaRotacoes({ talhao, clima, relevo, visita, amostra, sp }: {
           <label className="flex items-center gap-2"><input type="checkbox" name="gado" value="1" defaultChecked={gado} /> Tem gado</label>
           <label className="flex items-center gap-2"><input type="checkbox" name="irrigacao" value="1" defaultChecked={irrigacao} /> Tem irrigação</label>
         </div>
-        <p className="-mt-2 text-xs text-muted"><SeloEvidencia tipo="hipotese" /> É um teste de “e se”, não previsão. {sul ? "No Sul, El Niño costuma trazer mais chuva e La Niña, seca." : "No Cerrado, El Niño e La Niña mudam pouco a chuva."} A previsão de verdade sai no INMET e na NOAA.</p>
+        <p className="-mt-2 text-xs text-muted"><SeloEvidencia tipo="hipotese" /> É um teste de “e se”, não previsão. {sul ? "No Sul, El Niño costuma trazer mais chuva e La Niña, seca." : "No Cerrado, El Niño e La Niña mudam pouco a chuva."} A previsão de verdade sai no INMET e na NOAA.{sul && <> <Link href={`/tecnico/talhoes/${talhao.id}/retroanalise`} className="font-semibold">Volta no tempo: o app teria acertado a La Niña de 2021/22?</Link></>}</p>
         <fieldset className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           <legend className="label">O que é mais importante para o produtor</legend>
           {PRI.map(([k, n]) => (

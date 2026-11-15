@@ -3,8 +3,8 @@
 
 const BASE = "https://power.larc.nasa.gov/api/temporal/daily/point";
 const PARAMS = "T2M,T2M_MIN,T2M_MAX,PRECTOTCORR,RH2M";
-const ANO_INICIO = 2005;
-const ANO_FIM = 2024;
+const ANO_INICIO_PADRAO = 2005;
+const ANO_FIM_PADRAO = 2024;
 
 export interface ClimaTalhao {
   fonte: "NASA POWER";
@@ -49,8 +49,10 @@ function ymd(d: Date) {
 
 const ok = (v: number | undefined): v is number => typeof v === "number" && v > -990;
 
-export async function climaDoPonto(lat: number, lon: number): Promise<ClimaTalhao> {
-  const hoje = new Date();
+/** Clima normal do ponto. Por padrão, 2005–2024 e os últimos 30 dias até hoje; a retroanálise passa outro período e outro "hoje". */
+export async function climaDoPonto(lat: number, lon: number, opcoes: { de?: number; ate?: number; hoje?: Date } = {}): Promise<ClimaTalhao> {
+  const ANO_INICIO = opcoes.de ?? ANO_INICIO_PADRAO, ANO_FIM = opcoes.ate ?? ANO_FIM_PADRAO;
+  const hoje = opcoes.hoje ?? new Date();
   const inicioRecente = new Date(hoje.getTime() - 50 * 86400_000);
   const [hist, rec] = await Promise.all([
     buscar(lat, lon, `${ANO_INICIO}0101`, `${ANO_FIM}1231`),
@@ -138,4 +140,21 @@ export async function climaDoPonto(lat: number, lon: number): Promise<ClimaTalha
     recente,
     atualizado_em: new Date().toISOString(),
   };
+}
+
+export interface MesObservado { mes: string; chuva: number; diasCalor: number; tmaxMedia: number; maiorEstiagem: number }
+
+/** Chuva e calor observados mês a mês num período (para comparar uma safra passada com o normal). */
+export async function safraObservada(lat: number, lon: number, inicio: string, fim: string): Promise<MesObservado[]> {
+  const d = await buscar(lat, lon, inicio, fim);
+  const meses = new Map<string, { chuva: number; calor: number; tmax: number; n: number; seca: number; maior: number }>();
+  for (const dia of Object.keys(d.PRECTOTCORR).sort()) {
+    const k = dia.slice(0, 6);
+    const m = meses.get(k) ?? { chuva: 0, calor: 0, tmax: 0, n: 0, seca: 0, maior: 0 };
+    const p = d.PRECTOTCORR[dia], tmax = d.T2M_MAX[dia];
+    if (ok(p)) { m.chuva += p; if (p < 1) { m.seca++; m.maior = Math.max(m.maior, m.seca); } else m.seca = 0; }
+    if (ok(tmax)) { m.tmax += tmax; m.n++; if (tmax >= 35) m.calor++; }
+    meses.set(k, m);
+  }
+  return [...meses].map(([k, m]) => ({ mes: k, chuva: Math.round(m.chuva), diasCalor: m.calor, tmaxMedia: Math.round((m.tmax / Math.max(1, m.n)) * 10) / 10, maiorEstiagem: m.maior }));
 }
