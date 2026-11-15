@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { Feature, FeatureCollection, Polygon } from "geojson";
 import { BuscaLocal } from "./busca-local";
+import { CAMADAS_NASA, LegendaSobreMapa, SobreCamada, type ChaveCamada } from "./camadas-nasa";
 
 // O Turbopack não empacota o worker do MapLibre; o build copia o arquivo para /public (ver "prebuild").
 setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
@@ -14,14 +15,6 @@ setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 export interface TalhaoNoMapa { id: string; nome: string; geojson: Polygon }
 export interface Foco { lon: number; lat: number; zoom?: number; n: number }
 
-// Camadas da NASA (GIBS / Worldview). Resolução: MODIS 250 m, SMAP 9 km, HLS 30 m.
-const GIBS = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best";
-export const CAMADAS_NASA = {
-  ndvi: { nome: "Vegetação (NDVI MODIS, 8 dias)", url: (d: string) => `${GIBS}/MODIS_Terra_NDVI_8Day/default/${d}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png`, maxzoom: 9, opacidade: 0.75 },
-  smap: { nome: "Umidade da zona das raízes (SMAP L4)", url: (d: string) => `${GIBS}/SMAP_L4_Analyzed_Root_Zone_Soil_Moisture/default/${d}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`, maxzoom: 6, opacidade: 0.65 },
-  hls: { nome: "Imagem HLS 30 m (Landsat + Sentinel-2)", url: (d: string) => `${GIBS}/HLS_S30_Nadir_BRDF_Adjusted_Reflectance/default/${d}/GoogleMapsCompatible_Level12/{z}/{y}/{x}.png`, maxzoom: 12, opacidade: 1 },
-} as const;
-type ChaveCamada = keyof typeof CAMADAS_NASA;
 
 const ESTILO: StyleSpecification = {
   version: 8,
@@ -97,6 +90,8 @@ export function Mapa({
   const [nPontos, setNPontos] = useState(0);
   const [camada, setCamada] = useState<ChaveCamada | "">(camadaInicial ?? "");
   const [data, setData] = useState(diasAtras(10));
+  const [opacidade, setOpacidade] = useState<number>(camadaInicial ? CAMADAS_NASA[camadaInicial].opacidade : 0.75);
+  const [explicar, setExplicar] = useState(!!camadaInicial);
 
   useEffect(() => {
     if (!div.current) return;
@@ -182,8 +177,15 @@ export function Mapa({
     if (!camada) return;
     const c = CAMADAS_NASA[camada];
     m.addSource("nasa", { type: "raster", tiles: [c.url(data)], tileSize: 256, maxzoom: c.maxzoom, attribution: "NASA GIBS / Worldview" });
-    m.addLayer({ id: "nasa", type: "raster", source: "nasa", paint: { "raster-opacity": c.opacidade } }, "limite-fill");
+    m.addLayer({ id: "nasa", type: "raster", source: "nasa", paint: { "raster-opacity": opacidade } }, "limite-fill");
+    // A opacidade tem efeito próprio abaixo; não recria a camada a cada ajuste
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [camada, data, pronto]);
+
+  useEffect(() => {
+    const m = mapa.current;
+    if (m?.getLayer("nasa")) m.setPaintProperty("nasa", "raster-opacity", opacidade);
+  }, [opacidade]);
 
   function atualizarRascunho() {
     const p = pontos.current;
@@ -215,6 +217,7 @@ export function Mapa({
             Toque nos cantos, em volta da área. {nPontos} ponto{nPontos === 1 ? "" : "s"}.
           </div>
         )}
+        {camada && <LegendaSobreMapa chave={camada} />}
       </div>
       {desenhar && (
         <div className="flex flex-wrap gap-2">
@@ -229,16 +232,26 @@ export function Mapa({
           )}
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-2 text-sm">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
         <label htmlFor="camada" className="font-semibold">Camada da NASA:</label>
-        <select id="camada" className="input w-auto min-h-9 py-1" value={camada} onChange={(e) => setCamada(e.target.value as ChaveCamada | "")}>
-          <option value="">Nenhuma (só a imagem)</option>
+        <select id="camada" className="input w-auto min-h-9 py-1" value={camada}
+          onChange={(e) => { const k = e.target.value as ChaveCamada | ""; setCamada(k); if (k) { setOpacidade(CAMADAS_NASA[k].opacidade); setExplicar(true); } }}>
+          <option value="">Nenhuma (só a imagem de fundo)</option>
           {(Object.keys(CAMADAS_NASA) as ChaveCamada[]).map((k) => <option key={k} value={k}>{CAMADAS_NASA[k].nome}</option>)}
         </select>
-        {camada && <input type="date" aria-label="Data da camada" className="input w-auto min-h-9 py-1" value={data} max={diasAtras(1)} onChange={(e) => setData(e.target.value)} />}
+        {camada && (
+          <>
+            <label className="flex items-center gap-1.5">Data <input type="date" className="input w-auto min-h-9 py-1" value={data} max={diasAtras(1)} onChange={(e) => setData(e.target.value)} /></label>
+            <label className="flex items-center gap-1.5">Intensidade
+              <input type="range" min={0.2} max={1} step={0.05} value={opacidade} onChange={(e) => setOpacidade(Number(e.target.value))} className="w-24 accent-[var(--brand)]" />
+            </label>
+          </>
+        )}
+        <button type="button" className="text-sm font-semibold text-brand underline" onClick={() => setExplicar(!explicar)} aria-expanded={explicar}>
+          {explicar ? "Esconder explicação" : "O que é esta camada?"}
+        </button>
       </div>
-      {camada === "hls" && <p className="fonte">O HLS passa a cada 2 a 3 dias e nuvens escondem a imagem. Se aparecer vazio, troque a data.</p>}
-      {camada && camada !== "hls" && <p className="fonte">Resolução {camada === "ndvi" ? "de 250 m" : "de 9 km"}: mostra a tendência da região, não o detalhe dentro do talhão.</p>}
+      {explicar && <SobreCamada chave={camada} data={data} />}
     </div>
   );
 }
