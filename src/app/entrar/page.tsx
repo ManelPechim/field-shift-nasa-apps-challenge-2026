@@ -10,7 +10,7 @@ export default async function Entrar(props: PageProps<"/entrar">) {
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-10">
       <Link href="/" className="mb-6 flex items-center gap-2 no-underline">
         <Logo />
-        <b className="font-display text-xl font-extrabold text-ink">Field Shift</b>
+        <b className="font-display text-xl font-extrabold text-ink">Terrana</b>
       </Link>
       <FormularioEntrar modoInicial={modo === "criar" ? "criar" : "entrar"} />
     </main>

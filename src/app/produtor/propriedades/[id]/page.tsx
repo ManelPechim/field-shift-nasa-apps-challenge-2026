@@ -104,7 +104,7 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
                 <dd className="mt-1 grid gap-0.5 border-t border-line pt-2">
                   <span>Seu técnico: <b>{tecnico.nome}</b>{tecnico.instituicao && <span className="text-muted"> · {tecnico.instituicao}</span>}</span>
                   {tecnico.telefone && (
-                    <a href={linkWhatsApp(tecnico.telefone, `Olá, ${tecnico.nome.split(" ")[0]}! Aqui é ${perfil.nome.split(" ")[0]}, da ${p.nome}, pelo Field Shift.`)} target="_blank" rel="noreferrer" className="font-semibold">
+                    <a href={linkWhatsApp(tecnico.telefone, `Olá, ${tecnico.nome.split(" ")[0]}! Aqui é ${perfil.nome.split(" ")[0]}, da ${p.nome}, pela Terrana.`)} target="_blank" rel="noreferrer" className="font-semibold">
                       WhatsApp {formatarCelular(tecnico.telefone)}
                     </a>
                   )}

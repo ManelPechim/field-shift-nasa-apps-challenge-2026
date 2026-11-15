@@ -81,7 +81,7 @@ export default async function InicioProdutor() {
               {tecnico.telefone ? (
                 <>
                   <span className="text-sm">{formatarCelular(tecnico.telefone)}</span>
-                  <a href={linkWhatsApp(tecnico.telefone, `Olá, ${tecnico.nome.split(" ")[0]}! Aqui é ${primeiroNome}, pelo Field Shift.`)} target="_blank" rel="noreferrer" className="btn btn-sm no-underline">Conversar no WhatsApp</a>
+                  <a href={linkWhatsApp(tecnico.telefone, `Olá, ${tecnico.nome.split(" ")[0]}! Aqui é ${primeiroNome}, pela Terrana.`)} target="_blank" rel="noreferrer" className="btn btn-sm no-underline">Conversar no WhatsApp</a>
                 </>
               ) : <span className="text-sm text-muted">Celular não cadastrado.</span>}
             </div>

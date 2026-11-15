@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Tom } from "@/lib/agro/solo";
@@ -20,14 +21,9 @@ export function tomDoNivel(n: number): Tom | "neutro" {
   return n >= 3 ? "ruim" : n === 2 ? "atencao" : n === 1 ? "bom" : "neutro";
 }
 
+/** Símbolo da Terrana (public/terrana-simbolo.svg). */
 export function Logo() {
-  return (
-    <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
-      <rect x="1" y="1" width="28" height="28" rx="7" fill="var(--cover)" />
-      <path d="M5 22 L13 8 M10 24 L18 10 M15 26 L23 12" stroke="var(--surface)" strokeWidth="2.2" strokeLinecap="round" />
-      <circle cx="23" cy="7" r="3" fill="var(--grain)" />
-    </svg>
-  );
+  return <Image src="/terrana-simbolo.svg" alt="" width={28} height={31} unoptimized aria-hidden="true" />;
 }
 
 export function Topo({ perfil, links }: { perfil: Perfil; links: { href: string; nome: string }[] }) {
@@ -37,7 +33,7 @@ export function Topo({ perfil, links }: { perfil: Perfil; links: { href: string;
         <Link href={perfil.papel === "tecnico" ? "/tecnico" : "/produtor"} className="mr-auto flex items-center gap-2 no-underline">
           <Logo />
           <span className="leading-tight">
-            <b className="block font-display text-lg font-extrabold text-ink">Field Shift</b>
+            <b className="block font-display text-lg font-extrabold text-ink">Terrana</b>
             <span className="eyebrow">{perfil.papel === "tecnico" ? "Área do técnico" : "Área do produtor"}</span>
           </span>
         </Link>

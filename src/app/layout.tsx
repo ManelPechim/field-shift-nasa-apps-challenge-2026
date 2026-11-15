@@ -7,7 +7,7 @@ const corpo = Source_Sans_3({ variable: "--font-corpo", subsets: ["latin"] });
 const dados = IBM_Plex_Mono({ variable: "--font-dados", subsets: ["latin"], weight: ["400", "500"] });
 
 export const metadata: Metadata = {
-  title: { default: "Field Shift", template: "%s · Field Shift" },
+  title: { default: "Terrana", template: "%s · Terrana" },
   description: "Planejamento de rotação de culturas com dados de satélite da NASA, para o técnico e para o produtor.",
 };
 

@@ -43,7 +43,7 @@ export function FormularioEntrar({ modoInicial }: { modoInicial: "entrar" | "cri
           <div><label className="label" htmlFor="senha2">Senha</label><input className="input" id="senha2" name="senha" type="password" autoComplete="new-password" required /></div>
           <label className="flex gap-2 text-sm">
             <input type="checkbox" name="consentimento" className="mt-1" required />
-            <span>Concordo que meus dados e os dos produtores que eu cadastrar (nome, contato e localização das áreas) sejam guardados para o funcionamento do Field Shift durante o período de testes, conforme a LGPD. Tenho autorização dos produtores para cadastrá-los. A exclusão pode ser pedida a qualquer momento.</span>
+            <span>Concordo que meus dados e os dos produtores que eu cadastrar (nome, contato e localização das áreas) sejam guardados para o funcionamento da Terrana durante o período de testes, conforme a LGPD. Tenho autorização dos produtores para cadastrá-los. A exclusão pode ser pedida a qualquer momento.</span>
           </label>
           <button className="btn" disabled={criando}>{criando ? "Criando…" : "Criar conta de técnico"}</button>
         </form>

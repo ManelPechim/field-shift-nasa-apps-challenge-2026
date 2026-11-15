@@ -14,7 +14,7 @@ export default function Inicio() {
     <main className="flex-1">
       <div className="mx-auto max-w-5xl px-4 py-8">
         <div className="mb-10 flex items-center justify-between gap-4">
-          <span className="flex items-center gap-2"><Logo /><b className="font-display text-xl font-extrabold">Field Shift</b></span>
+          <span className="flex items-center gap-2"><Logo /><b className="font-display text-xl font-extrabold">Terrana</b></span>
           <Link href="/entrar" className="btn-ghost btn-sm">Entrar</Link>
         </div>
         <span className="eyebrow">NASA Space Apps Challenge 2026 · Desafio Field Shift</span>
@@ -23,7 +23,7 @@ export default function Inicio() {
         </h1>
         <p className="mt-4 max-w-2xl text-lg text-muted">
           As informações para escolher uma boa rotação de culturas já existem, mas estão espalhadas: clima num lugar, relevo em outro, laudo de solo no papel.
-          O Field Shift junta tudo por talhão e transforma em um plano que o produtor entende.
+          A Terrana junta tudo por talhão e transforma em um plano que o produtor entende.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link href="/entrar?modo=criar" className="btn">Criar conta</Link>
@@ -40,7 +40,7 @@ export default function Inicio() {
           ))}
         </ol>
         <p className="mt-10 max-w-2xl text-sm text-muted">
-          O Field Shift apoia a decisão; não substitui o técnico nem o agrônomo responsável. Recomendações de adubação e de defensivos continuam exigindo um profissional habilitado.
+          A Terrana apoia a decisão; não substitui o técnico nem o agrônomo responsável. Recomendações de adubação e de defensivos continuam exigindo um profissional habilitado.
         </p>
       </div>
     </main>

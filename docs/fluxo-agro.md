@@ -1,4 +1,4 @@
-# Como funciona o trabalho no campo (Brasil) e onde o Field Shift entra
+# Como funciona o trabalho no campo (Brasil) e onde a Terrana entra
 
 Resumo para quem está chegando agora ao agro. Validar os detalhes com o Baeta.
 
@@ -34,9 +34,9 @@ No app: **técnico** = agrônomo, técnico agrícola ou extensionista. **Produto
 - **ART** e **receituário agronômico**: responsabilidade do agrônomo.
 - **ZARC** (Zoneamento Agrícola de Risco Climático, MAPA/Embrapa): diz em quais decêndios plantar cada cultura em cada município e tipo de solo. Banco e seguro exigem.
 
-## Onde o Field Shift entra
+## Onde a Terrana entra
 
-| Etapa do ciclo | Hoje | No Field Shift |
+| Etapa do ciclo | Hoje | Na Terrana |
 |---|---|---|
 | Diagnóstico | Caderno, memória do técnico, WhatsApp | Visita técnica estruturada + talhões desenhados no mapa |
 | Clima e relevo | Experiência local, estações distantes | NASA POWER (20 anos, diário) + SRTM por talhão, com riscos calculados |

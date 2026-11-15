@@ -33,7 +33,7 @@ export function linkWhatsApp(celular: string, texto?: string) {
 
 export function mensagemDeAcesso(o: { nome: string; email: string; celular: string; senha: string; site: string }) {
   return [
-    `Olá, ${o.nome.split(" ")[0]}! Seu acesso ao Field Shift está pronto.`,
+    `Olá, ${o.nome.split(" ")[0]}! Seu acesso à Terrana está pronto.`,
     "",
     `Entre em: ${o.site}/entrar`,
     `Login: ${o.email} ou o seu celular ${formatarCelular(o.celular)}`,

@@ -1,4 +1,4 @@
-// Simulação do fluxo completo do Field Shift, do técnico ao produtor, clicando no app de verdade.
+// Simulação do fluxo completo da Terrana, do técnico ao produtor, clicando no app de verdade.
 //
 // Uso (com o servidor rodando: npm run dev -- -p 3123):
 //   npm run simulacao                 abre o Chrome e mostra cada passo devagar
@@ -187,7 +187,7 @@ function relatorio(inicio) {
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const logins = [`Técnica: ${TECNICO.email} / ${TECNICO.senha}`, ...CLIENTES_DA_EXECUCAO.map((c) => `${c.produtor.nome}: ${c.produtor.celular} ou ${c.produtor.email} / ${c.produtor.senha}`)];
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${EXEMPLO ? "Exemplo" : "Simulação"} Field Shift · ${quando}</title>
+<title>${EXEMPLO ? "Exemplo" : "Simulação"} Terrana · ${quando}</title>
 <style>
 :root{--bg:#f4f1e8;--fg:#1d2a1f;--muted:#5b6b5d;--line:#d9d3c2;--card:#fffdf7;--tec:#1d5fa6;--prod:#2f7d4a;--bad:#b23b2c}
 @media (prefers-color-scheme:dark){:root{--bg:#141a15;--fg:#e8efe6;--muted:#9fb0a2;--line:#2c372e;--card:#1b231c;--tec:#7fb0ec;--prod:#6cc28a;--bad:#ec7a6a}}
@@ -204,7 +204,7 @@ li{background:var(--card);border:1px solid var(--line);border-radius:16px;paddin
 .erro{color:var(--bad);font-weight:600}img{width:100%;border-radius:10px;border:1px solid var(--line);display:block}
 .cel img{max-width:300px;margin:0 auto}
 </style></head><body><main>
-<h1>${EXEMPLO ? "Dados de exemplo do Field Shift" : "Simulação do fluxo Field Shift"}</h1>
+<h1>${EXEMPLO ? "Dados de exemplo da Terrana" : "Simulação do fluxo Terrana"}</h1>
 <p class="sub">${esc(quando.replace(/-(\d\d)-(\d\d)$/, " $1:$2"))} · ${esc(URL_BASE)}</p>
 <div class="resumo"><div><b>${okTodos ? "Tudo certo" : "Falhou"}</b>resultado</div><div><b>${passos.filter((p) => p.ok).length}/${passos.length}</b>passos concluídos</div><div><b>${total} s</b>duração</div><div><b>${errosNoNavegador.length}</b>erros no console</div></div>
 ${EXEMPLO || MANTER ? `<div class="logins">${logins.map(esc).join("<br>")}</div>` : ""}

@@ -73,7 +73,7 @@ export default async function Retroanalise(props: PageProps<"/tecnico/talhoes/[i
 
       <header className="mt-2 mb-6 grid max-w-4xl gap-2">
         <span className="eyebrow">Retroanálise · simulação com dados reais da NASA</span>
-        <h1 className="h1">Se o Field Shift existisse em outubro de 2021, ele teria acendido o alerta?</h1>
+        <h1 className="h1">Se a Terrana existisse em outubro de 2021, ele teria acendido o alerta?</h1>
         <p className="text-muted">O motor do app roda como se fosse <b className="text-ink">15 de outubro de 2021</b>, antes do plantio da soja. Ele só sabe o clima de 2001 a 2020 deste talhão e a previsão de La Niña da época. Depois comparamos com o que a NASA mediu de novembro de 2021 a fevereiro de 2022. O app não calcula produtividade: a pergunta é se ele teria preparado o técnico para a safra.</p>
       </header>
 

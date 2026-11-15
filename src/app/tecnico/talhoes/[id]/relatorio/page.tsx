@@ -105,7 +105,7 @@ export default async function RelatorioDeDecisao(props: PageProps<"/tecnico/talh
         <header className="grid gap-3">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <span className="eyebrow">Field Shift · Relatório de decisão · {dataBR(new Date().toISOString())}</span>
+              <span className="eyebrow">Terrana · Relatório de decisão · {dataBR(new Date().toISOString())}</span>
               <h1 className="h1 flex items-center gap-2.5">
                 <span className="size-5 shrink-0 rounded-full border border-black/20" style={{ background: t.cor }} aria-hidden="true" />
                 {t.nome}
