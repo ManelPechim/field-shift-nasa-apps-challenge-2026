@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRef, useState } from "react";
 import type { Polygon } from "geojson";
 import { Area } from "@/components/area";
-import { IconeVerNoMapa } from "@/components/icones";
+import { ListaDeTalhoes, bboxDe, type TalhaoDaLista } from "@/components/lista-talhoes";
 import { Mapa, type Foco } from "@/components/mapa";
 
 /** Cores que aparecem bem sobre a imagem de satélite */
@@ -12,13 +11,6 @@ const PALETA = [
   ["#f2c94c", "Amarelo"], ["#ff8a3d", "Laranja"], ["#ef4444", "Vermelho"], ["#ec4899", "Rosa"], ["#a855f7", "Roxo"],
   ["#38bdf8", "Azul"], ["#22d3ee", "Ciano"], ["#a3e635", "Verde-limão"], ["#ffffff", "Branco"],
 ] as const;
-
-export interface TalhaoDaLista { id: string; nome: string; geojson: Polygon; area_ha: number | null; cor: string; rotacao: string | null }
-
-function bbox(p: Polygon): [number, number, number, number] {
-  const xs = p.coordinates[0].map((c) => c[0]), ys = p.coordinates[0].map((c) => c[1]);
-  return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
-}
 
 export function TalhoesDaPropriedade({
   propriedadeId, talhoes, limite, ponto, rotacoes, acao,
@@ -42,7 +34,7 @@ export function TalhoesDaPropriedade({
   const regiao = ponto[1] < -24 ? "sul" : "cerrado";
 
   function verNoMapa(t: TalhaoDaLista) {
-    const b = bbox(t.geojson);
+    const b = bboxDe(t.geojson);
     setFoco({ lon: (b[0] + b[2]) / 2, lat: (b[1] + b[3]) / 2, bbox: b, n: ++n.current });
     setDestaque(t.id);
     areaMapa.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -52,29 +44,8 @@ export function TalhoesDaPropriedade({
     <div className="grid gap-10">
       <section>
         <h2 className="h2 mb-3">Talhões cadastrados {talhoes.length > 0 && <span className="font-normal text-muted">({talhoes.length})</span>}</h2>
-        {!talhoes.length ? (
-          <div className="rounded-2xl border border-dashed border-line bg-surface-2 p-5 text-center text-sm text-muted">
-            Nenhum talhão ainda. Desenhe o primeiro no mapa abaixo.
-          </div>
-        ) : (
-          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {talhoes.map((t) => (
-              <li key={t.id} className={`card grid gap-2 p-3 ${destaque === t.id ? "border-brand ring-1 ring-brand" : ""}`}>
-                <div className="flex items-start gap-2.5">
-                  <span className="mt-1 size-4 shrink-0 rounded-full border border-black/20" style={{ background: t.cor }} aria-hidden="true" />
-                  <div className="min-w-0">
-                    <b className="block font-display leading-tight">{t.nome}</b>
-                    <span className="text-sm text-muted"><Area ha={t.area_ha} /> · {t.rotacao ?? "rotação atual não informada"}</span>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" className="btn-ghost btn-sm" onClick={() => verNoMapa(t)}><IconeVerNoMapa />Ver no mapa</button>
-                  <Link href={`/tecnico/talhoes/${t.id}`} className="btn btn-sm no-underline">Abrir talhão</Link>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+        <ListaDeTalhoes talhoes={talhoes} destaque={destaque} aoVerNoMapa={verNoMapa} hrefTalhao="/tecnico/talhoes/"
+          vazio="Nenhum talhão ainda. Desenhe o primeiro no mapa abaixo." />
       </section>
 
       <section ref={areaMapa} className="scroll-mt-24">

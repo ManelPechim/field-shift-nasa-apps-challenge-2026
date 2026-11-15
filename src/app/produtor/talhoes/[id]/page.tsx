@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarioRotacao } from "@/components/graficos";
 import { TarefaProdutor } from "@/components/tarefa";
+import { Trilha } from "@/components/trilha";
 import { Pagina, Selo, Vazio, dataBR, num } from "@/components/ui";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { regiaoDe, rotacaoPorId } from "@/lib/agro/culturas";
@@ -13,7 +14,7 @@ export default async function TalhaoProdutor(props: PageProps<"/produtor/talhoes
   const { id } = await props.params;
   const { relato } = await props.searchParams;
   const { supabase } = await exigirPerfil("produtor");
-  const { data: t } = await supabase.from("talhoes").select("*").eq("id", id).maybeSingle<Talhao>();
+  const { data: t } = await supabase.from("talhoes").select("*, propriedades(id, nome)").eq("id", id).maybeSingle<Talhao & { propriedades: { id: string; nome: string } }>();
   if (!t) notFound();
   const [{ data: planos }, { data: tarefas }, { data: amostras }, { data: ocorrencias }] = await Promise.all([
     supabase.from("planos").select("*").eq("talhao_id", id).eq("status", "publicado").order("publicado_em", { ascending: false }).limit(1).returns<Plano[]>(),
@@ -31,9 +32,16 @@ export default async function TalhaoProdutor(props: PageProps<"/produtor/talhoes
 
   return (
     <Pagina>
-      <Link href="/produtor" className="text-sm">← Início</Link>
+      <Trilha passos={[
+        { rotulo: "Suas propriedades", href: "/produtor" },
+        { rotulo: t.propriedades.nome, tipo: "Propriedade", href: `/produtor/propriedades/${t.propriedades.id}` },
+        { rotulo: t.nome, tipo: "Talhão" },
+      ]} />
       <div className="mt-2 mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div><span className="eyebrow">{num(t.area_ha, 1)} ha</span><h1 className="h1">{t.nome}</h1></div>
+        <div>
+          <span className="eyebrow">{num(t.area_ha, 1)} ha</span>
+          <h1 className="h1 flex items-center gap-2.5"><span className="size-5 shrink-0 rounded-full border border-black/20" style={{ background: t.cor }} aria-hidden="true" />{t.nome}</h1>
+        </div>
         <Link href={`/produtor/relatar?talhao=${t.id}`} className="btn">Relatar algo deste talhão</Link>
       </div>
       {relato === "ok" && <p role="status" className="mb-6 rounded-xl bg-ok-soft p-3 text-ok">Relato enviado. Seu técnico vai ver e responder aqui.</p>}

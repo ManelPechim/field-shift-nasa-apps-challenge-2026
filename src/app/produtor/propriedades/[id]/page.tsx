@@ -1,0 +1,128 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { Area, SeletorDeUnidade, UnidadeDeArea } from "@/components/area";
+import { BotaoCopiar } from "@/components/copiar";
+import { IconeRota } from "@/components/icones";
+import { Trilha } from "@/components/trilha";
+import { TarefaProdutor } from "@/components/tarefa";
+import { Pagina, dataBR } from "@/components/ui";
+import { exigirPerfil } from "@/lib/supabase/server";
+import { dadosNasa } from "@/lib/dados";
+import { alertasDoClima } from "@/lib/alertas";
+import type { Plano, Propriedade, Talhao, Tarefa, Visita } from "@/lib/tipos";
+import { TalhoesEMapa } from "./talhoes-e-mapa";
+
+export default async function PropriedadeProdutor(props: PageProps<"/produtor/propriedades/[id]">) {
+  const { id } = await props.params;
+  const { supabase } = await exigirPerfil("produtor");
+  const [{ data: p }, { data: talhoes }, { data: visitas }] = await Promise.all([
+    supabase.from("propriedades").select("*").eq("id", id).maybeSingle<Propriedade>(),
+    supabase.from("talhoes").select("*").eq("propriedade_id", id).order("criado_em").returns<Talhao[]>(),
+    supabase.from("visitas").select("data").eq("propriedade_id", id).order("data", { ascending: false }).limit(1).returns<Pick<Visita, "data">[]>(),
+  ]);
+  if (!p) notFound();
+  const lista = talhoes ?? [];
+  const tIds = lista.map((t) => t.id);
+  const [{ data: tarefas }, { data: planos }] = tIds.length
+    ? await Promise.all([
+      supabase.from("tarefas").select("*").in("talhao_id", tIds).eq("status", "pendente").order("criado_em").returns<Tarefa[]>(),
+      supabase.from("planos").select("talhao_id, rotacao_nome, safra").in("talhao_id", tIds).eq("status", "publicado").order("publicado_em", { ascending: false }).returns<Pick<Plano, "talhao_id" | "rotacao_nome" | "safra">[]>(),
+    ])
+    : [{ data: [] as Tarefa[] }, { data: [] as Pick<Plano, "talhao_id" | "rotacao_nome" | "safra">[] }];
+  // O clima da NASA POWER tem grade de ~50 km: o primeiro talhão vale para a propriedade toda
+  const nasa = lista[0] ? await dadosNasa(supabase, lista[0]).catch(() => null) : null;
+  const alertas = alertasDoClima(nasa?.clima ?? null);
+
+  const somaTalhoes = lista.reduce((a, t) => a + (t.area_ha ?? 0), 0);
+  const ocupacao = p.area_ha && somaTalhoes ? Math.round((100 * somaTalhoes) / p.area_ha) : null;
+  const coordenadas = `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`;
+  const local = [p.municipio, p.uf].filter(Boolean).join(" - ");
+  const nomeTalhao = (tid: string) => lista.find((t) => t.id === tid)?.nome;
+
+  return (
+    <Pagina>
+      <Trilha passos={[
+        { rotulo: "Suas propriedades", href: "/produtor" },
+        { rotulo: p.nome, tipo: "Propriedade" },
+      ]} />
+
+      <UnidadeDeArea>
+        <header className="card mb-10 grid gap-5 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <span className="eyebrow">Propriedade</span>
+              <h1 className="h1">{p.nome}</h1>
+              {local && <p className="text-muted">{local}</p>}
+            </div>
+            {lista.length > 0 && <Link href={`/produtor/relatar?propriedade=${p.id}`} className="btn">Relatar algo desta propriedade</Link>}
+          </div>
+
+          <dl className="grid gap-4 border-t border-line pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid content-start gap-1">
+              <dt className="eyebrow">Endereço</dt>
+              <dd className="font-semibold">{p.endereco || "Sem endereço"}</dd>
+              {local && <dd>{local}</dd>}
+              <dd className="flex flex-wrap items-center gap-x-2 font-mono text-xs text-muted">Coordenadas: {coordenadas} <BotaoCopiar texto={coordenadas} /></dd>
+              <dd>
+                <a href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold">
+                  <IconeRota />Como chegar
+                </a>
+              </dd>
+            </div>
+            <div className="grid content-start gap-1">
+              <dt className="flex items-center justify-between gap-2"><span className="eyebrow">Área da propriedade</span><SeletorDeUnidade /></dt>
+              <dd className="font-display text-xl font-bold"><Area ha={p.area_ha} vazio="Limite não desenhado" /></dd>
+              <dd className="text-xs text-muted">ha = hectare: 10.000 m², um quadrado de 100 m × 100 m (um pouco maior que um campo de futebol).</dd>
+            </div>
+            <div className="grid content-start gap-1">
+              <dt className="eyebrow">Talhões</dt>
+              <dd className="font-display text-xl font-bold">{lista.length} {lista.length === 1 ? "talhão" : "talhões"}</dd>
+              {lista.length > 0 && <dd>Somam <b><Area ha={somaTalhoes} /></b>{ocupacao != null && <> · {ocupacao}% da propriedade</>}</dd>}
+              {lista.length > 1 && <dd className="text-xs text-muted">A área é a soma de todos os talhões.</dd>}
+            </div>
+            <div className="grid content-start gap-1">
+              <dt className="eyebrow">Acompanhamento</dt>
+              <dd>Última visita do técnico: <b>{dataBR(visitas?.[0]?.data)}</b></dd>
+              <dd>Tarefas pendentes: <b>{tarefas?.length ?? 0}</b></dd>
+            </div>
+          </dl>
+        </header>
+
+        {alertas.length > 0 && (
+          <section className="mb-10">
+            <h2 className="h2 mb-3">Como está o tempo</h2>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {alertas.map((a) => (
+                <div key={a.titulo} className={`rounded-2xl p-4 ${a.tom === "bom" ? "bg-ok-soft" : "bg-warn-soft"}`}>
+                  <b className="font-display">{a.titulo}</b>
+                  <p className="mt-1 text-sm">{a.texto}</p>
+                </div>
+              ))}
+            </div>
+            {nasa?.clima?.recente && <span className="fonte mt-2 block">Satélites da NASA (NASA POWER), últimos 30 dias até {dataBR(nasa.clima.recente.ate)}</span>}
+          </section>
+        )}
+
+        <TalhoesEMapa
+          talhoes={lista.map((t) => {
+            const pl = planos?.find((x) => x.talhao_id === t.id);
+            return {
+              id: t.id, nome: t.nome, geojson: t.geojson, area_ha: t.area_ha, cor: t.cor,
+              descricao: pl ? `Plano ${pl.safra}: ${pl.rotacao_nome}` : "Plano ainda não publicado",
+              pendentes: tarefas?.filter((x) => x.talhao_id === t.id).length ?? 0,
+            };
+          })}
+          limite={p.limite}
+          ponto={[p.lon, p.lat]}
+        />
+      </UnidadeDeArea>
+
+      {!!tarefas?.length && (
+        <section className="mt-10">
+          <h2 className="h2 mb-3">O que fazer agora nesta propriedade</h2>
+          <ul className="grid gap-3 lg:grid-cols-2">{tarefas.map((t) => <TarefaProdutor key={t.id} t={t} talhao={nomeTalhao(t.talhao_id)} />)}</ul>
+        </section>
+      )}
+    </Pagina>
+  );
+}

@@ -2,86 +2,114 @@ import Link from "next/link";
 import { Pagina, Selo, Vazio, num } from "@/components/ui";
 import { TarefaProdutor } from "@/components/tarefa";
 import { exigirPerfil } from "@/lib/supabase/server";
-import { dadosNasa } from "@/lib/dados";
-import { alertasDoClima } from "@/lib/alertas";
-import type { Propriedade, Talhao, Tarefa } from "@/lib/tipos";
+import { formatarCelular, linkWhatsApp } from "@/lib/contato";
+import type { Perfil, Propriedade, Talhao, Tarefa } from "@/lib/tipos";
 
 export const metadata = { title: "Início" };
 
 export default async function InicioProdutor() {
   const { supabase, perfil } = await exigirPerfil("produtor");
-  const { data: props } = await supabase.from("propriedades").select("*").returns<Propriedade[]>();
-  if (!props?.length) {
-    return (
-      <Pagina>
-        <h1 className="h1 mb-4">Olá, {perfil.nome.split(" ")[0]}</h1>
-        <Vazio titulo="Suas lavouras ainda não aparecem aqui">
-          Seu técnico ainda não cadastrou suas propriedades. Assim que ele marcar a propriedade no mapa, ela aparece nesta tela.
-        </Vazio>
-      </Pagina>
-    );
-  }
-  const ids = props.map((p) => p.id);
-  const { data: talhoes } = await supabase.from("talhoes").select("*").in("propriedade_id", ids).order("criado_em").returns<Talhao[]>();
-  const tIds = (talhoes ?? []).map((t) => t.id);
-  const [{ data: tarefas }, { data: planos }] = await Promise.all([
-    tIds.length ? supabase.from("tarefas").select("*").in("talhao_id", tIds).eq("status", "pendente").order("criado_em").returns<Tarefa[]>() : Promise.resolve({ data: [] as Tarefa[] }),
-    tIds.length ? supabase.from("planos").select("talhao_id, rotacao_nome, safra").in("talhao_id", tIds).eq("status", "publicado") : Promise.resolve({ data: [] }),
+  const [{ data: props }, { data: cadastro }] = await Promise.all([
+    supabase.from("propriedades").select("*").order("criado_em").returns<Propriedade[]>(),
+    supabase.from("produtores").select("tecnico_id").eq("usuario_id", perfil.id).maybeSingle<{ tecnico_id: string }>(),
   ]);
-  // Alertas do primeiro talhão (o clima da NASA POWER tem grade de ~50 km: vale para a propriedade toda)
-  const nasa = talhoes?.[0] ? await dadosNasa(supabase, talhoes[0]).catch(() => null) : null;
-  const alertas = alertasDoClima(nasa?.clima ?? null);
-  const nomeTalhao = (id: string) => talhoes?.find((t) => t.id === id)?.nome;
+  const { data: tecnico } = cadastro
+    ? await supabase.from("perfis").select("nome, telefone, instituicao").eq("id", cadastro.tecnico_id).maybeSingle<Pick<Perfil, "nome" | "telefone" | "instituicao">>()
+    : { data: null };
+  const primeiroNome = perfil.nome.split(" ")[0];
+
+  const ids = (props ?? []).map((p) => p.id);
+  const { data: talhoes } = ids.length
+    ? await supabase.from("talhoes").select("*").in("propriedade_id", ids).order("criado_em").returns<Talhao[]>()
+    : { data: [] as Talhao[] };
+  const tIds = (talhoes ?? []).map((t) => t.id);
+  const { data: tarefas } = tIds.length
+    ? await supabase.from("tarefas").select("*").in("talhao_id", tIds).eq("status", "pendente").order("criado_em").returns<Tarefa[]>()
+    : { data: [] as Tarefa[] };
+  const talhoesDe = (pid: string) => talhoes?.filter((t) => t.propriedade_id === pid) ?? [];
+  const pendentesDe = (pid: string) => { const ts = new Set(talhoesDe(pid).map((t) => t.id)); return tarefas?.filter((x) => ts.has(x.talhao_id)).length ?? 0; };
+  const rotuloTalhao = (id: string) => {
+    const t = talhoes?.find((x) => x.id === id);
+    if (!t) return undefined;
+    return (props?.length ?? 0) > 1 ? `${t.nome} (${props?.find((p) => p.id === t.propriedade_id)?.nome})` : t.nome;
+  };
 
   return (
     <Pagina>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <span className="eyebrow">{props.map((p) => p.nome).join(" · ")}</span>
-          <h1 className="h1">Olá, {perfil.nome.split(" ")[0]}</h1>
+          <span className="eyebrow">Área do produtor</span>
+          <h1 className="h1">Olá, {primeiroNome}</h1>
         </div>
-        <Link href="/produtor/relatar" className="btn">Relatar algo da lavoura</Link>
+        {!!tIds.length && <Link href="/produtor/relatar" className="btn">Relatar algo da lavoura</Link>}
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
         <section>
+          <h2 className="h2 mb-3">Suas propriedades {!!props?.length && <span className="font-normal text-muted">({props.length})</span>}</h2>
+          {!props?.length ? (
+            <Vazio titulo="Suas propriedades ainda não aparecem aqui">
+              Seu técnico ainda não cadastrou suas propriedades. Assim que ele marcar a propriedade no mapa, ela aparece nesta tela.
+            </Vazio>
+          ) : (
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {props.map((p) => {
+                const ts = talhoesDe(p.id);
+                const soma = ts.reduce((a, t) => a + (t.area_ha ?? 0), 0);
+                const pend = pendentesDe(p.id);
+                return (
+                  <li key={p.id}>
+                    <Link href={`/produtor/propriedades/${p.id}`} className="card grid h-full content-between gap-3 p-4 text-ink no-underline hover:border-brand">
+                      <div>
+                        <b className="block font-display text-lg leading-tight">{p.nome}</b>
+                        <span className="text-sm text-muted">{[p.municipio, p.uf].filter(Boolean).join(" - ") || "Local não informado"}</span>
+                      </div>
+                      <dl className="grid grid-cols-2 gap-2 text-sm">
+                        <div><dt className="eyebrow">Área</dt><dd className="font-semibold">{p.area_ha != null ? `${num(p.area_ha, 1)} ha` : <span className="font-normal text-muted">Sem limite desenhado</span>}</dd></div>
+                        <div><dt className="eyebrow">Talhões</dt><dd className="font-semibold">{ts.length}{ts.length > 0 && <span className="font-normal text-muted"> · {num(soma, 1)} ha</span>}</dd></div>
+                      </dl>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        {pend > 0 ? <Selo tom="atencao">{pend} tarefa{pend > 1 ? "s" : ""} pendente{pend > 1 ? "s" : ""}</Selo> : <Selo tom="bom">Nada pendente</Selo>}
+                        <span className="text-sm font-semibold text-brand">Abrir propriedade →</span>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        <aside className="grid content-start gap-3">
+          <h2 className="h2">Seu técnico</h2>
+          {tecnico ? (
+            <div className="card grid gap-2 p-4">
+              <div>
+                <b className="block font-display text-lg leading-tight">{tecnico.nome}</b>
+                {tecnico.instituicao && <span className="text-sm text-muted">{tecnico.instituicao}</span>}
+              </div>
+              {tecnico.telefone ? (
+                <>
+                  <span className="text-sm">{formatarCelular(tecnico.telefone)}</span>
+                  <a href={linkWhatsApp(tecnico.telefone, `Olá, ${tecnico.nome.split(" ")[0]}! Aqui é ${primeiroNome}, pelo Field Shift.`)} target="_blank" rel="noreferrer" className="btn btn-sm no-underline">Conversar no WhatsApp</a>
+                </>
+              ) : <span className="text-sm text-muted">Celular não cadastrado.</span>}
+              <p className="text-xs text-muted">Para algo que aconteceu na lavoura, use “Relatar”: o relato fica guardado junto do talhão.</p>
+            </div>
+          ) : <p className="text-sm text-muted">Nenhum técnico ligado à sua conta.</p>}
+        </aside>
+      </div>
+
+      {!!props?.length && (
+        <section className="mt-10">
           <h2 className="h2 mb-3">O que fazer agora</h2>
           {tarefas?.length ? (
-            <ul className="grid gap-3">{tarefas.slice(0, 6).map((t) => <TarefaProdutor key={t.id} t={t} talhao={nomeTalhao(t.talhao_id)} />)}</ul>
+            <ul className="grid gap-3 lg:grid-cols-2">{tarefas.slice(0, 6).map((t) => <TarefaProdutor key={t.id} t={t} talhao={rotuloTalhao(t.talhao_id)} />)}</ul>
           ) : (
             <Vazio titulo="Nada pendente">Quando seu técnico publicar o plano da safra, as tarefas aparecem aqui.</Vazio>
           )}
         </section>
-        <aside className="grid content-start gap-3">
-          <h2 className="h2">Como está o tempo</h2>
-          {alertas.length ? alertas.map((a) => (
-            <div key={a.titulo} className={`rounded-2xl p-4 ${a.tom === "bom" ? "bg-ok-soft" : "bg-warn-soft"}`}>
-              <b className="font-display">{a.titulo}</b>
-              <p className="mt-1 text-sm">{a.texto}</p>
-            </div>
-          )) : <p className="text-sm text-muted">Sem dados recentes.</p>}
-          {nasa?.clima?.recente && <span className="fonte">Satélites da NASA (NASA POWER), até {nasa.clima.recente.ate.split("-").reverse().join("/")}</span>}
-        </aside>
-      </div>
-
-      <section className="mt-10">
-        <h2 className="h2 mb-3">Seus talhões</h2>
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {talhoes?.map((t) => {
-            const pl = planos?.find((p) => p.talhao_id === t.id);
-            const pend = tarefas?.filter((x) => x.talhao_id === t.id).length ?? 0;
-            return (
-              <li key={t.id}>
-                <Link href={`/produtor/talhoes/${t.id}`} className="card block h-full p-4 text-ink no-underline hover:border-brand">
-                  <b className="font-display text-lg">{t.nome}</b> <span className="text-sm text-muted">· {num(t.area_ha, 1)} ha</span>
-                  <p className="mt-1 text-sm">{pl ? `Plano ${pl.safra}: ${pl.rotacao_nome}` : "Plano ainda não publicado"}</p>
-                  {pend > 0 && <div className="mt-2"><Selo tom="atencao">{pend} tarefa{pend > 1 ? "s" : ""} pendente{pend > 1 ? "s" : ""}</Selo></div>}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+      )}
     </Pagina>
   );
 }

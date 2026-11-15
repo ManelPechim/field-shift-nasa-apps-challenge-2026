@@ -81,7 +81,7 @@ export default async function PaginaPropriedade(props: PageProps<"/tecnico/propr
           propriedadeId={p.id}
           talhoes={lista.map((t) => {
             const r = rotacaoPorId(t.rotacao_atual);
-            return { id: t.id, nome: t.nome, geojson: t.geojson, area_ha: t.area_ha, cor: t.cor, rotacao: r ? nomeRotacao(r) : null };
+            return { id: t.id, nome: t.nome, geojson: t.geojson, area_ha: t.area_ha, cor: t.cor, descricao: r ? nomeRotacao(r) : "rotação atual não informada" };
           })}
           limite={p.limite}
           ponto={[p.lon, p.lat]}

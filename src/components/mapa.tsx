@@ -26,7 +26,7 @@ const ESTILO: StyleSpecification = {
       tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
       tileSize: 256,
       maxzoom: 19,
-      attribution: "Imagem para desenho: Esri, Maxar, Earthstar Geographics",
+      attribution: "Imagem de satélite: Esri, Maxar, Earthstar Geographics",
     },
     nomes: {
       type: "raster",
