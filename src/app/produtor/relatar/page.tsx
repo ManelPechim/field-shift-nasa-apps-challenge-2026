@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Pagina, Vazio } from "@/components/ui";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { FormularioRelato } from "./formulario";
@@ -6,8 +7,14 @@ import { dadosDoRelato } from "./dados";
 export const metadata = { title: "Relatar" };
 
 /** Relato a partir do início: primeiro escolhe a propriedade. De dentro da propriedade, use /produtor/propriedades/[id]/relatar. */
-export default async function Relatar() {
+export default async function Relatar(props: PageProps<"/produtor/relatar">) {
+  const { talhao } = await props.searchParams;
   const { supabase } = await exigirPerfil("produtor");
+  // Atalho da barra do celular na página de um talhão: abre o relato da propriedade dele, com o talhão marcado
+  if (typeof talhao === "string") {
+    const { data: t } = await supabase.from("talhoes").select("propriedade_id").eq("id", talhao).maybeSingle();
+    if (t) redirect(`/produtor/propriedades/${t.propriedade_id}/relatar?talhao=${talhao}`);
+  }
   const { propriedades, talhoes } = await dadosDoRelato(supabase);
 
   return (

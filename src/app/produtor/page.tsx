@@ -102,7 +102,7 @@ export default async function InicioProdutor() {
       </div>
 
       {!!props?.length && (
-        <section className="mt-10">
+        <section id="tarefas" className="mt-10 scroll-mt-24">
           <h2 className="h2 mb-3">O que fazer agora</h2>
           {tarefas?.length ? (
             <ul className="grid gap-3 lg:grid-cols-2">{tarefas.slice(0, 6).map((t) => <TarefaProdutor key={t.id} t={t} talhao={rotuloTalhao(t.talhao_id)} />)}</ul>

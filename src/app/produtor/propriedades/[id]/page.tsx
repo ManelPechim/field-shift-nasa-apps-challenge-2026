@@ -6,7 +6,7 @@ import { IconeRota } from "@/components/icones";
 import { Trilha } from "@/components/trilha";
 import { TarefaProdutor } from "@/components/tarefa";
 import { RelatosDoProdutor } from "@/components/relatos";
-import { Pagina, dataBR } from "@/components/ui";
+import { Pagina, Vazio, dataBR } from "@/components/ui";
 import { exigirPerfil } from "@/lib/supabase/server";
 import { dadosNasa } from "@/lib/dados";
 import { alertasDoClima } from "@/lib/alertas";
@@ -141,12 +141,12 @@ export default async function PropriedadeProdutor(props: PageProps<"/produtor/pr
         />
       </UnidadeDeArea>
 
-      {!!tarefas?.length && (
-        <section id="tarefas" className="mt-10 scroll-mt-24">
-          <h2 className="h2 mb-3">O que fazer agora nesta propriedade</h2>
-          <ul className="grid gap-3 lg:grid-cols-2">{tarefas.map((t) => <TarefaProdutor key={t.id} t={t} talhao={nomeTalhao(t.talhao_id)} />)}</ul>
-        </section>
-      )}
+      <section id="tarefas" className="mt-10 scroll-mt-24">
+        <h2 className="h2 mb-3">O que fazer agora nesta propriedade</h2>
+        {tarefas?.length
+          ? <ul className="grid gap-3 lg:grid-cols-2">{tarefas.map((t) => <TarefaProdutor key={t.id} t={t} talhao={nomeTalhao(t.talhao_id)} />)}</ul>
+          : <Vazio titulo="Nada pendente">Quando seu técnico publicar o plano da safra, as tarefas aparecem aqui.</Vazio>}
+      </section>
 
       <section id="relatos" className="mt-10 scroll-mt-24">
         <h2 className="h2 mb-1">Relatos da propriedade inteira</h2>

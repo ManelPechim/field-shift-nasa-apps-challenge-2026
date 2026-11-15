@@ -58,7 +58,7 @@ export default async function TalhaoProdutor(props: PageProps<"/produtor/talhoes
             </div>
           ) : <Vazio titulo="O plano ainda não foi publicado">Seu técnico está preparando. Quando publicar, aparece aqui.</Vazio>}
 
-          <h2 className="h2 mt-4">Tarefas</h2>
+          <h2 id="tarefas" className="h2 mt-4 scroll-mt-24">Tarefas</h2>
           {tarefas?.length ? <ul className="grid gap-3">{tarefas.map((x) => <TarefaProdutor key={x.id} t={x} />)}</ul> : <p className="text-sm text-muted">Nenhuma tarefa ainda.</p>}
         </section>
 
